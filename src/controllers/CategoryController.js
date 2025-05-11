@@ -20,14 +20,24 @@ module.exports.createCategory = async (req, res) => {
     }
 };
 
-module.exports.getCategory = async (req,res)=>{
+// In CategoryController.js
+module.exports.getCategory = async (req, res) => {
     try {
         const categoryDetail = await CategoryModel.find();
-        res.status(200).json(successResponse(200,"Category data is fetched successfully",categoryDetail));
+        res.status(200).json({
+            success: true,
+            message: 'Category data is fetched successfully',
+            data: categoryDetail
+        });
     } catch (error) {
-        res.status(500).json(errorResponse(500,"Category is not find",error));
+        res.status(500).json({
+            success: false,
+            message: 'Category not found',
+            error: error.message
+        });
     }
 };
+
 
 module.exports.updateCategory = async(req,res)=>{
     try {
