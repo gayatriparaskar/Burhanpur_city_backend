@@ -48,7 +48,7 @@ module.exports.createSubCat = async (req, res) => {
         res.status(500).json(errorResponse(500, "Category creation failed.", error.message || error));
     }
 };
-module.exports.getSubCategory = async (req, res) => {
+module.exports.getSubCategoryOne = async (req, res) => {
   try {
     const { categoryId } = req.params;
 
@@ -57,6 +57,17 @@ module.exports.getSubCategory = async (req, res) => {
     res
       .status(200)
       .json(successResponse(200, "Category data is fetched successfully", subcategoryDetail));
+  } catch (error) {
+    res.status(500).json(errorResponse(500, "Category not found", error));
+  }
+};
+module.exports.getSubCategoryAll = async (req, res) => {
+  try {
+    const subcategoryDetailAll = await SubCategoryModel.find();
+
+    res
+      .status(200)
+      .json(successResponse(200, "Category data is fetched successfully", subcategoryDetailAll));
   } catch (error) {
     res.status(500).json(errorResponse(500, "Category not found", error));
   }
