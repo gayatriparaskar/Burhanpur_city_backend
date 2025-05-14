@@ -6,7 +6,7 @@ const { createSubCat , getSubCategory , updateSubCategory , deleteSubCategory } 
 const subcategoryRoutes = express.Router();
 
 subcategoryRoutes.post('/createSubCategory',createSubCat);
-subcategoryRoutes.get('/getSubCategory',getSubCategory);
+subcategoryRoutes.get('/getSubCategory/:id',getSubCategory);
 subcategoryRoutes.put('/updateSubCategory/:id',updateSubCategory);
 subcategoryRoutes.delete('/deleteSubCategory/:id',deleteSubCategory);
 
