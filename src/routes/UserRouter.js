@@ -5,12 +5,12 @@ const { createUser , getAllUser , updateUer , deleteUser , adminLogin , getOneUs
 
 const userRouter = express.Router();
 
-userRouter.post("/createUser",authorization,createUser);
+userRouter.post("/createUser",createUser);
 userRouter.get("/userDetails",getAllUser);
 userRouter.put("/updatedUser/:id",updateUer);
-userRouter.delete("/deleteUser/:id",authorization,deleteUser);
+userRouter.delete("/deleteUser/:id",deleteUser);
 userRouter.post("/adminLogin",adminLogin);
-userRouter.get("/getUser",authorization,getOneUser); 
+userRouter.get("/getUser",getOneUser); 
 
 
 module.exports = userRouter ; 
