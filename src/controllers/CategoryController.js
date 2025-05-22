@@ -63,4 +63,46 @@ module.exports.deleteCategory = async(req,res)=>{
     }
 };
 
+module.exports.searchCategory = async (req,res)=>{
+   const { query, isActive } = req.query;
 
+  const filter = {};
+
+  if (query) {
+    filter.$or = [
+      { name: { $regex: query, $options: 'i' } },
+      { description: { $regex: query, $options: 'i' } }
+    ];
+  }
+
+  if (isActive !== undefined) {
+    filter.isActive = isActive === 'true';
+  }
+
+  try {
+    const categories = await CategoryModel.find(filter);
+
+    // ✅ Yeh check karega agar empty hai
+    if (categories.length === 0) {
+      return res.status(200).json({
+        success: true,
+        message: 'No categories found matching the search criteria',
+        data: []
+      });
+    }
+
+    // ✅ Agar mil gaya to
+    return res.status(200).json({
+      success: true,
+      message: 'Categories found',
+      data: categories
+    });
+
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: 'Server Error',
+      error: error.message || error
+    });
+  }
+}
