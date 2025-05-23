@@ -4,7 +4,7 @@ const { errorResponse, successResponse } = require("../helper/successAndError");
 module.exports.createCategory = async (req, res) => {
     try {
         const data = req.body;
-        data.user = req.user.id;
+        // data.user = req.user.id;
 
         const existOne = await CategoryModel.findOne({ name: data.name });
         if (existOne) {
