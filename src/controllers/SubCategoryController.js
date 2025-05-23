@@ -29,6 +29,7 @@ module.exports.createSubCat = async (req, res) => {
             timing,
             calling,
             address,
+            details,
             isActive: true
         });
 

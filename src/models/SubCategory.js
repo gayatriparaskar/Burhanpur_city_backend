@@ -10,6 +10,7 @@ const subCategorySchema = new mongoose.Schema({
   address:String,
   timing:String,
   calling:Number,
+  details:String,
   isActive: { type: Boolean, default: true },
   createdAt: { type: Date, default: Date.now }
 });
