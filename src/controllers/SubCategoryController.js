@@ -5,7 +5,7 @@ const { errorResponse, successResponse } = require("../helper/successAndError");
 
 module.exports.createSubCat = async (req, res) => {
     try {
-        const { name, category, description ,image, rating, speciality,  timing, calling, address} = req.body;
+        const { name, category, description ,image, rating, speciality,  timing, calling, address, details} = req.body;
 
         // Validate input
         if (!name || !category) {
