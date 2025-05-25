@@ -83,7 +83,7 @@ module.exports.adminLogin = async (req,res)=>{
         const token = jwt.sign({userId: existPhone._id},JWT_SECRET);
         console.log(existPhone.role);
         
-        res.status(200).json(successResponse(404,"Token is generated successfully",token));
+        res.status(200).json(successResponse(200,"Token is generated successfully",token));
 
     } catch (error) {
         res.status(404).json(errorResponse(404,"User Login failed"));

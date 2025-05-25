@@ -1,5 +1,5 @@
 const express = require ("express");
-const authorization = require ("../middleware/authentication");
+const authentication = require ("../middleware/authentication");
 
 const { createUser , getAllUser , updateUer , deleteUser , adminLogin , getOneUser } = require ("../controllers/UserController");
 
