@@ -71,22 +71,22 @@ module.exports.adminLogin = async (req,res)=>{
         const existPhone = await UserModel.findOne({phone});
         if(!existPhone)
         {
-            res.status(404).json(errorResponse(404,"Phone no. is not found"));
+          return  res.status(500).json(errorResponse(500,"Phone no. is not found"));
         }
         // console.log("Email not found")
         const compare = await bcrypt.compare(password,existPhone.password);
         if(!compare){
-            res.status(404).json(errorResponse(404,"Invalid Credentials"));
+          return  res.status(500).json(errorResponse(500,"Invalid Credentials"));
         }
         // console.log(ACCESS_TOKEN_SECRET);
         
         const token = jwt.sign({userId: existPhone._id},JWT_SECRET);
         console.log(existPhone.role);
         
-        res.status(200).json(successResponse(200,"Token is generated successfully",token));
+       return res.status(200).json(successResponse(200,"Token is generated successfully",token));
 
     } catch (error) {
-        res.status(404).json(errorResponse(404,"User Login failed"));
+        res.status(500).json(errorResponse(500,"User Login failed"));
     }
 };
 
