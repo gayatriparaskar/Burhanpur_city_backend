@@ -9,7 +9,7 @@ userRouter.post("/createUser",createUser);
 userRouter.get("/userDetails",getAllUser);
 userRouter.put("/updatedUser/:id",updateUer);
 userRouter.delete("/deleteUser/:id",deleteUser);
-userRouter.post("/adminLogin",authentication,adminLogin);
+userRouter.post("/adminLogin"adminLogin);
 userRouter.get("/getUser",getOneUser); 
 
 
