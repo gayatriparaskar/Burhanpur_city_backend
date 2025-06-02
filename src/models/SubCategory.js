@@ -28,6 +28,8 @@ const subCategorySchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
-SubcategoryModel = mongoose.model('SubCategory', subCategorySchema);
+subCategorySchema.index({ name: 1, category: 1 }, { unique: true });
+
+const SubcategoryModel = mongoose.model('SubCategory', subCategorySchema);
 
 module.exports = SubcategoryModel ;
