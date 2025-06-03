@@ -20,7 +20,7 @@ module.exports.createUser = async (req,res)=>{
      const bcryptPassword = await bcrypt.hash(data.password,SALT_ROUNDS);
      delete data.password;
      if (!/^\d{10}$/.test(data.phone)) {
-         return res.status(400).json(errorResponse(400, "Invalid phone number. Must be 10 digits."));
+         return res.status(400).json(errorResponse(400, "Invalid phone number. Must be 10 digits only."));
     }
 
      const newUser = await UserModel({...req.body,password:bcryptPassword});
