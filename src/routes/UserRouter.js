@@ -13,4 +13,4 @@ userRouter.post("/adminLogin",adminLogin);
 userRouter.get("/getUser",getOneUser); 
 
 
-module.exports = userRouter ; 
+module.exports = userRouter ;
