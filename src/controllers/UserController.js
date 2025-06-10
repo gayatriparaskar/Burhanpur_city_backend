@@ -127,7 +127,7 @@ module.exports.getOneUser = async (req, res) => {
     if (!user) {
       return res
         .status(404)
-        .json(errorResponse(404, "User not found"));
+        .json(errorResponse(404, "User not found not registered"));
     }
 
     return res
