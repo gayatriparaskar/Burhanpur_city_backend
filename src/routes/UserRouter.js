@@ -11,7 +11,7 @@ userRouter.get("/userDetails",authentication,checkRole("admin"),getAllUser);
 userRouter.put("/updatedUser/:id",updateUer);
 userRouter.delete("/deleteUser/:id",deleteUser);
 userRouter.post("/login",adminLogin);
-userRouter.get("/me",authentication,getOneUser); 
+userRouter.get("/me",getOneUser); 
 
 module.exports = userRouter ;
 
