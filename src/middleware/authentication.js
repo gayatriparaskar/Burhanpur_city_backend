@@ -1,26 +1,42 @@
 const jwt = require("jsonwebtoken");
-const dotenv = require("dotenv");
-dotenv.config();
-const { errorResponse } = require("../helper/successAndError");
-const JWT_SECRET = process.env.JWT_SECRET;
+const {
+  errorResponse,
+} = require("../helper/successAndError");
 
-const authenticat = async (req, res, next) => {
+const ACCESS_TOKEN_SECRET = process.env.JWT_SECRET;
+
+
+const authentication = async (req, res, next) => {
+  
+  let token = req.header("Authorization");
+  token = token && token.replace("Bearer ", "");
+
+  if (!token) {
+    return res
+      .status(401)
+      .json(errorResponse(401, "Unauthorized - No token provided", null));
+  }
   try {
-    let token = req.header("Authorization");
-    token = token && token.replace("Bearer ", "");
 
-    if (!token) {
-      return res.status(404).json(errorResponse(404, "Token is needed"));
-    }
+    const decoded = jwt.verify(token, ACCESS_TOKEN_SECRET);
 
-    const verifyToken = jwt.verify(token, JWT_SECRET);
-    req.userId = verifyToken.userId; // ✅ Attach decoded token info to req
-    console.log(verifyToken);
+
+    const userId = decoded.userId;
+    req.userId = userId;
+
     next();
   } catch (error) {
-    console.log(error);
-    res.status(500).json(errorResponse(500, "Server Error"));
+
+    return res
+      .status(401)
+      .json(
+        errorResponse(
+          401,
+          "error inside authentication middleware",
+          error.message
+        )
+      );
   }
 };
 
-module.exports = authenticat;
+module.exports =  authentication ;
