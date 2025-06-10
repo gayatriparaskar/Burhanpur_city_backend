@@ -122,7 +122,7 @@ module.exports.getOneUser = async (req, res) => {
 
     const user = await UserModel.findById(userId)
       .select("name address role email phone id");
-
+       console.log("Fetched user:", user); // 👈 ADD THIS
     if (!user) {
       return res
         .status(404)
