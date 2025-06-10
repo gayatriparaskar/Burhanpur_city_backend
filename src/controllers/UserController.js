@@ -85,43 +85,58 @@ module.exports.deleteUser = async (req,res)=>{
     }
 };
 
-module.exports.adminLogin = async (req,res)=>{
-    try {
-        const { phone , password } =req.body;
-        // const secretKey = "12345678";
-        const existPhone = await UserModel.findOne({phone});
-        if(!existPhone)
-        {
-          return  res.status(500).json(errorResponse(500,"Phone no. is not found"));
-        }
-        // console.log("Email not found")
-        const compare = await bcrypt.compare(password,existPhone.password);
-        if(!compare){
-          return  res.status(500).json(errorResponse(500,"Invalid Credentials"));
-        }
-        // console.log(ACCESS_TOKEN_SECRET);
-        
-        const token = jwt.sign({userId: existPhone._id},JWT_SECRET);
-        console.log(existPhone.role);
-        
-       return res.status(200).json(successResponse(200,"Token is generated successfully",token));
-
-    } catch (error) {
-        res.status(500).json(errorResponse(500,"User Login failed",error));
+module.exports.login = async (req, res) => {
+  try {
+    const { phone, password } = req.body;
+    const user = await UserModel.findOne({ phone });
+    if (!user) {
+      return res.status(401).json(errorResponse(401, "Invalid credentials"));
     }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json(errorResponse(401, "Invalid credentials"));
+    }
+
+    const payload = { id: user._id, role: user.role };
+    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "2h" });
+    return res
+      .status(200)
+      .json(successResponse(200, "Login successful", { token }));
+  } catch (err) {
+    console.error("Login error:", err);
+    return res.status(500).json(errorResponse(500, "Server Error"));
+  }
 };
 
-module.exports.getOneUser = async (req,res)=>{
-    try {
-        const id = req.userId;
-        const getUser = await UserModel.findById(id).select('name address role email phone');
-        if (!getUser) {
-      return res.status(404).json(errorResponse(404, "User not found"));
+
+module.exports.getOneUser = async (req, res) => {
+  try {
+    const userId = req.userId;
+    console.log("Request userId:", userId);
+
+    if (!mongoose.isValidObjectId(userId)) {
+      return res
+        .status(400)
+        .json(errorResponse(400, "Malformed user ID in token"));
     }
-        console.log(id,"one");
-        console.log(getUser,"2");
-        res.status(200).json(successResponse(200,"Get One User Detail",getUser));
-    } catch (error) {
-        res.status(500).json(errorResponse(500,"Ivalid Credential",error));
+
+    const user = await UserModel.findById(userId)
+      .select("name address role email phone id");
+
+    if (!user) {
+      return res
+        .status(404)
+        .json(errorResponse(404, "User not found"));
     }
-}
+
+    return res
+      .status(200)
+      .json(successResponse(200, "Get One User Detail", user));
+  } catch (err) {
+    console.error("getOneUser error:", err);
+    return res
+      .status(500)
+      .json(errorResponse(500, "Server Error"));
+  }
+};

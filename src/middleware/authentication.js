@@ -14,7 +14,7 @@ const authenticat = async (req, res, next) => {
     }
 
     const verifyToken = jwt.verify(token, JWT_SECRET);
-    req.user = verifyToken; // ✅ Attach decoded token info to req
+    req.userId = verifyToken.userId; // ✅ Attach decoded token info to req
     console.log(verifyToken);
     next();
   } catch (error) {
