@@ -28,6 +28,7 @@ const subCategorySchema = new mongoose.Schema({
   calling: Number,
   services: String,
   emergency: Number,
+  specification:String,
   isActive: { type: Boolean, default: true },
   createdAt: { type: Date, default: Date.now },
 });
