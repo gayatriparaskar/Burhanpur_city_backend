@@ -14,33 +14,50 @@ const JWT_EXPIRE = process.env.JWT_EXPIRE;
 
 const UserModel = require("../models/User");
 
-module.exports.createUser = async (req,res)=>{
-   try {
+module.exports.createUser = async (req, res) => {
+  try {
     const data = req.body;
-     const bcryptPassword = await bcrypt.hash(data.password,SALT_ROUNDS);
-     delete data.password;
-     if (!/^\d{10}$/.test(data.phone)) {
-         return res.status(400).json(errorResponse(400, "Invalid phone number. Must be 10 digits only."));
+
+    // Validate phone number
+    if (!/^\d{10}$/.test(data.phone)) {
+      return res.status(404).json(errorResponse(404, "Invalid phone number. Must be 10 digits only."));
     }
 
-     const newUser = await UserModel({...req.body,password:bcryptPassword});
-     newUser.save();
-     console.log(newUser);
-    //  .json(errorResponse(400, "User is already registered"));
-     res.status(200).json(successResponse(200,"User is Created Successfully",newUser));
-   } catch (error) {
+    // Check if user already exists by phone or email
+    const existingUser = await UserModel.findOne({
+      $or: [{ phone: data.phone }, { email: data.email }],
+    });
+
+    if (existingUser) {
+      return res.status(404).json(errorResponse(404, "User already registered", existingUser));
+    }
+
+    // Hash password
+    const bcryptPassword = await bcrypt.hash(data.password, SALT_ROUNDS);
+    delete data.password;
+
+    // Create and save user
+    const newUser = new UserModel({ ...data, password: bcryptPassword });
+    await newUser.save();
+
+    console.log(newUser);
+
+    res.status(200).json(successResponse(200, "User is created successfully", newUser));
+  } catch (error) {
     console.log(error);
-    res.status(500).json(errorResponse(500,"User is not Created"));
-   }
+    res.status(500).json(errorResponse(500, "User is not created",error));
+  }
 };
+
 
 module.exports.getAllUser = async (req,res)=>{
     try {
         const data = req.body;
         const userDetails = await UserModel.find();
+         console.error("Get All Users Error:", error);  // ✅ Add this line
         res.status(200).json(successResponse(200,"User Details is fetched",userDetails));
     } catch (error) {
-        res.status(500).json(errorResponse(500,"Details is not found"));
+        res.status(500).json(errorResponse(500,"Details is not found",error));
     }
 };
 
@@ -54,7 +71,7 @@ module.exports.updateUer = async (req,res)=>{
         })
         res.status(200).json(successResponse(200,"User is updated successfully",updatedUser));
     } catch (error) {
-        res.status(500).json(errorResponse(500,"User is not Updated"));
+        res.status(500).json(errorResponse(500,"User is not Updated",error));
     }
 };
 
@@ -64,7 +81,7 @@ module.exports.deleteUser = async (req,res)=>{
         const deletedUser = await UserModel.findByIdAndDelete(id);
         res.status(200).json(successResponse(200,"User is deleted successfully",deletedUser));
     } catch (error) {
-        res.status(500).json(errorResponse(500,"User is not deleted"));
+        res.status(500).json(errorResponse(500,"User is not deleted",error));
     }
 };
 
@@ -90,17 +107,21 @@ module.exports.adminLogin = async (req,res)=>{
        return res.status(200).json(successResponse(200,"Token is generated successfully",token));
 
     } catch (error) {
-        res.status(500).json(errorResponse(500,"User Login failed"));
+        res.status(500).json(errorResponse(500,"User Login failed",error));
     }
 };
 
 module.exports.getOneUser = async (req,res)=>{
     try {
         const id = req.userId;
-        const getUser = await UserModel.findById(id);
+        const getUser = await UserModel.findById(id).select('name address role email phone');
+        if (!getUser) {
+      return res.status(404).json(errorResponse(404, "User not found"));
+    }
         console.log(id,"one");
+        console.log(getUser,"2");
         res.status(200).json(successResponse(200,"Get One User Detail",getUser));
     } catch (error) {
-        res.status(500).json(errorResponse(500,"Ivalid Credential"));
+        res.status(500).json(errorResponse(500,"Ivalid Credential",error));
     }
 }
