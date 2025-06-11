@@ -11,7 +11,7 @@ const BussinessRouter = require("./src/routes/BussinessRouter");
 const categoryRoutes = require('./src/routes/CategoryRouter');
 const subcategoryRoutes = require('./src/routes/SubCategoryRouter');
 // const jobRoutes = require('./src/routes/jobRoutes');
-// const advertisementRoutes = require('./src/routes/advertisementRoutes');
+const advertisementRoutes = require('./src/routes/AdvertisementRouter');
 
 
 dotenv.config();
@@ -30,7 +30,7 @@ app.use("/api/bussiness",BussinessRouter);
 app.use('/api/category', categoryRoutes);
 app.use('/api/subcategory', subcategoryRoutes);
 // app.use('/api/jobs', jobRoutes);
-// app.use('/api/advertisements', advertisementRoutes);
+app.use('/api/advertisements', advertisementRoutes);
 
 
 // Error handling middleware
