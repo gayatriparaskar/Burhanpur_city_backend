@@ -15,7 +15,7 @@ module.exports.createBussiness = async (req, res) => {
     }
 
     // 2. Check if business with same name exists in the same subCategory
-    const name = data.name.trim();
+    const name = data.name.trim().toLowerCase();
     const existingBusiness = await BussinessModel.findOne({
       name,
       subCategory: data.subCategory,
@@ -27,7 +27,7 @@ module.exports.createBussiness = async (req, res) => {
         .json(
           errorResponse(
             404,
-            "Business already exists in this subCategory",
+            "Business already exists ",
             existingBusiness
           )
         );
