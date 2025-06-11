@@ -7,7 +7,7 @@ const { createUser , getAllUser , updateUer , deleteUser , login , getOneUser } 
 const userRouter = express.Router();
 
 userRouter.post("/createUser",createUser);
-userRouter.get("/userDetails",authentication,getAllUser);
+userRouter.get("/userDetails",getAllUser);
 userRouter.put("/updatedUser/:id",updateUer);
 userRouter.delete("/deleteUser/:id",deleteUser);
 userRouter.post("/login",login);
