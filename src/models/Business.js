@@ -4,7 +4,7 @@ const businessSchema = new mongoose.Schema({
   name: { type: String, required: true },
   owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   category: { type: mongoose.Schema.Types.ObjectId, ref: 'Category', required: true },
-  subCategory: { type: mongoose.Schema.Types.ObjectId, ref: 'SubCategory', required: true },
+  subCategory: { type: mongoose.Schema.Types.ObjectId, ref: 'SubCategory' },
   description: String,
   address: {
     street: String,
