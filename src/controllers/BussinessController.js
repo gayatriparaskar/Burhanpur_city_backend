@@ -2,31 +2,54 @@ const mongoose = require("mongoose");
 const BussinessModel = require("../models/Business");
 const { errorResponse, successResponse } = require("../helper/successAndError");
 
+const SubCategoryModel = require("../models/SubCategory"); // Adjust path as needed
+
 module.exports.createBussiness = async (req, res) => {
   try {
-    const data= req.body;
-    // data.owner = req.user.id;
-    const existOne = await BussinessModel.findOne({
-      name:data.name
-    });
-    if (existOne) {
-       res.status(404).json(errorResponse(404, "Bussiness already exists", existOne));
-    }
-    const newBussiness = new BussinessModel(data);
-    await newBussiness.save();
-    // populate the category and sub category id
+    const data = req.body;
 
-    const populatedSubId = await newBussiness.populate(
-     { path : "category", select: "id"},
-     { path: "User", select:"id"}
+    // 1. Check if subCategory exists
+    const subCategoryExists = await SubCategoryModel.findById(data.subCategory);
+    if (!subCategoryExists) {
+      return res.status(400).json(
+        errorResponse(400, "Invalid subCategory ID")
+      );
+    }
+
+    // 2. Check if business with same name exists in the same subCategory
+    const existingBusiness = await BussinessModel.findOne({
+      name: data.name,
+      subCategory: data.subCategory
+    });
+
+    if (existingBusiness) {
+      return res.status(404).json(
+        errorResponse(404, "Business already exists in this subCategory", existingBusiness)
+      );
+    }
+
+    // 3. Save new business
+    const newBusiness = new BussinessModel(data);
+    await newBusiness.save();
+
+    // 4. Populate references
+    await newBusiness.populate([
+      { path: "category", select: "id name" },
+      { path: "User", select: "id name" },
+      {path :"subCategory" , select:"id name"}
+    ]);
+
+    return res.status(200).json(
+      successResponse(200, "Business added successfully", newBusiness)
     );
 
-    res.status(200).json(successResponse(200,"Bussiness created successfuly",newBussiness));
-
   } catch (error) {
-    res.status(500).json(errorResponse(500, "Invalid Credentials",error));
+    return res.status(500).json(
+      errorResponse(500, "Something went wrong", error.message)
+    );
   }
 };
+
 
 module.exports.getBussiness = async (req, res) => {
   try {

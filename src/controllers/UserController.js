@@ -54,6 +54,8 @@ module.exports.getAllUser = async (req,res)=>{
     try {
         const data = req.body;
         const userDetails = await UserModel.find();
+        console.log("data",data);
+        
         res.status(200).json(successResponse(200,"User Details is fetched",userDetails));
     } catch (error) {
         res.status(500).json(errorResponse(500,"Details is not found",error.message));
