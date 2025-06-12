@@ -18,10 +18,12 @@ module.exports.createBussiness = async (req, res) => {
 
      // 2. Check if business with same name exists in the same subCategory (optional)
     const name = data.name.trim();
-    const existingBusiness = await BussinessModel.findOne({
-      name,
-      subCategory: data.subCategory,
-    }).collation({ locale: "en", strength: 2 });
+    const query = { name };
+    if (data.subCategory) {
+      query.subCategory = data.subCategory;
+    }
+
+    const existingBusiness = await BussinessModel.findOne(query).collation({ locale: "en", strength: 2 });
 
      if (existingBusiness) {
       return res
