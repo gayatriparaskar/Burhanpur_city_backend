@@ -95,3 +95,27 @@ module.exports.deletedBuss = async (req, res) => {
     res.status(500).json(errorResponse(500, "Invalid Credentials"));
   }
 };
+
+module.exports.getMyBuss = async (req, res) => {
+  try {
+    const userId = req.userId; // ✅ from auth middleware
+
+    const myBuss = await BussinessModel.find({ owner: userId }).select(
+      "name description contact address"
+    );
+
+    if (!myBuss) {
+      return res
+        .status(404)
+        .json(errorResponse(404, "Business not found for this user"));
+    }
+
+    res.status(200).json(
+      successResponse(200, "My business fetched successfully", myBuss)
+    );
+  } catch (error) {
+    res
+      .status(500)
+      .json(errorResponse(500, "Failed to fetch business", error.message));
+  }
+};

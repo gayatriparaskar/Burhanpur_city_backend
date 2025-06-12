@@ -1,9 +1,11 @@
 {
   "name": "burhanput_city_backend",
   "version": "1.0.0",
-  "description":"Burhanpur city backend",
+  "description": "Burhanpur city backend",
   "main": "index.js",
-   "engines": { "node": "18.x" },
+  "engines": {
+    "node": "18.x"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -26,6 +28,7 @@
     "mongoose": "^8.14.2",
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.2",
-    "nodemon": "^3.1.10"
+    "nodemon": "^3.1.10",
+    "razorpay": "^2.9.6"
   }
 }
