@@ -9,13 +9,13 @@ const jobSchema = new mongoose.Schema({
   salary: {
     min: Number,
     max: Number,
-    currency: { type: String, default: 'INR' }
-  },
-  location: String,
-  contactEmail: String,
-  isActive: { type: Boolean, default: true },
-  createdAt: { type: Date, default: Date.now },
-  expiryDate: Date
-});
-
-module.exports = mongoose.model('Job', jobSchema);
+      currency: { type: String, default: 'INR' }
+    },
+    location: String,
+    contactEmail: String,
+    isActive: { type: Boolean, default: true },
+    createdAt: { type: Date, default: Date.now },
+    expiryDate: Date
+  });
+  const JobModel = mongoose.model('Job', jobSchema);
+  module.exports = JobModel;
