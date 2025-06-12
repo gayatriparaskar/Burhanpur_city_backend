@@ -3,8 +3,8 @@ const mongoose = require('mongoose');
 const businessSchema = new mongoose.Schema({
   name: { type: String, required: true },
   owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  // category: { type: mongoose.Schema.Types.ObjectId, ref: 'Category', required: true },
-  // subCategory: { type: mongoose.Schema.Types.ObjectId, ref: 'SubCategory', required: true },
+  category: { type: mongoose.Schema.Types.ObjectId, ref: 'Category', required: true },
+  subCategory: { type: mongoose.Schema.Types.ObjectId, ref: 'SubCategory' },
   description: String,
   address: {
     street: String,
@@ -29,6 +29,11 @@ const businessSchema = new mongoose.Schema({
     review: String,
     date: { type: Date, default: Date.now }
   }],
+  specility:{type:String},
+  block:{type:String},
+  features:[String],
+  keyWords:[String],
+  lead:[{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   isVerified: { type: Boolean, default: false },
   isActive: { type: Boolean, default: true },
   createdAt: { type: Date, default: Date.now }

@@ -14,29 +14,51 @@ const JWT_EXPIRE = process.env.JWT_EXPIRE;
 
 const UserModel = require("../models/User");
 
-module.exports.createUser = async (req,res)=>{
-   try {
+module.exports.createUser = async (req, res) => {
+  try {
     const data = req.body;
-     const bcryptPassword = await bcrypt.hash(data.password,SALT_ROUNDS);
-     delete data.password;
-     const newUser = await UserModel({...req.body,password:bcryptPassword});
-     newUser.save();
-     console.log(newUser);
-    //  .json(errorResponse(400, "User is already registered"));
-     res.status(200).json(successResponse(200,"User is Created Successfully",newUser));
-   } catch (error) {
+
+    // Validate phone number
+    if (!/^\d{10}$/.test(data.phone)) {
+      return res.status(404).json(errorResponse(404, "Invalid phone number. Must be 10 digits only."));
+    }
+
+    // Check if user already exists by phone or email
+    const existingUser = await UserModel.findOne({
+      $or: [{ phone: data.phone }, { email: data.email }],
+    });
+
+    if (existingUser) {
+      return res.status(404).json(errorResponse(404, "User already registered", existingUser));
+    }
+
+    // Hash password
+    const bcryptPassword = await bcrypt.hash(data.password, SALT_ROUNDS);
+    delete data.password;
+
+    // Create and save user
+    const newUser = new UserModel({ ...data, password: bcryptPassword });
+    await newUser.save();
+
+    console.log(newUser);
+
+    res.status(200).json(successResponse(200, "User is created successfully", newUser));
+  } catch (error) {
     console.log(error);
-    res.status(500).json(errorResponse(500,"User is not Created"));
-   }
+    res.status(500).json(errorResponse(500, "User is not created",error));
+  }
 };
+
 
 module.exports.getAllUser = async (req,res)=>{
     try {
         const data = req.body;
         const userDetails = await UserModel.find();
+        console.log("data",data);
+        
         res.status(200).json(successResponse(200,"User Details is fetched",userDetails));
     } catch (error) {
-        res.status(500).json(errorResponse(500,"Details is not found"));
+        res.status(500).json(errorResponse(500,"Details is not found",error.message));
     }
 };
 
@@ -50,7 +72,7 @@ module.exports.updateUer = async (req,res)=>{
         })
         res.status(200).json(successResponse(200,"User is updated successfully",updatedUser));
     } catch (error) {
-        res.status(500).json(errorResponse(500,"User is not Updated"));
+        res.status(500).json(errorResponse(500,"User is not Updated",error));
     }
 };
 
@@ -60,43 +82,62 @@ module.exports.deleteUser = async (req,res)=>{
         const deletedUser = await UserModel.findByIdAndDelete(id);
         res.status(200).json(successResponse(200,"User is deleted successfully",deletedUser));
     } catch (error) {
-        res.status(500).json(errorResponse(500,"User is not deleted"));
+        res.status(500).json(errorResponse(500,"User is not deleted",error));
     }
 };
 
-module.exports.adminLogin = async (req,res)=>{
-    try {
-        const { phone , password } =req.body;
-        // const secretKey = "12345678";
-        const existPhone = await UserModel.findOne({phone});
-        if(!existPhone)
-        {
-          return  res.status(500).json(errorResponse(500,"Phone no. is not found"));
-        }
-        // console.log("Email not found")
-        const compare = await bcrypt.compare(password,existPhone.password);
-        if(!compare){
-          return  res.status(500).json(errorResponse(500,"Invalid Credentials"));
-        }
-        // console.log(ACCESS_TOKEN_SECRET);
-        
-        const token = jwt.sign({userId: existPhone._id},JWT_SECRET);
-        console.log(existPhone.role);
-        
-       return res.status(200).json(successResponse(200,"Token is generated successfully",token));
-
-    } catch (error) {
-        res.status(500).json(errorResponse(500,"User Login failed"));
+module.exports.login = async (req, res) => {
+  try {
+    const { phone, password } = req.body;
+    const user = await UserModel.findOne({ phone });
+    if (!user) {
+      return res.status(401).json(errorResponse(401, "Invalid credentials"));
     }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json(errorResponse(401, "Invalid credentials"));
+    }
+
+    const payload = { id: user._id, role: user.role };
+    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "2h" });
+    return res
+      .status(200)
+      .json(successResponse(200, "Login successful", { token }));
+  } catch (err) {
+    console.error("Login error:", err);
+    return res.status(500).json(errorResponse(500, "Server Error"));
+  }
 };
 
-module.exports.getOneUser = async (req,res)=>{
-    try {
-        const id = req.userId;
-        const getUser = await UserModel.findById(id);
-        console.log(id,"one");
-        res.status(200).json(successResponse(200,"Get One User Detail",getUser));
-    } catch (error) {
-        res.status(500).json(errorResponse(500,"Ivalid Credential"));
+
+module.exports.getOneUser = async (req, res) => {
+  try {
+    const userId = req.userId;
+    console.log("Request userId:", userId);
+
+    if (!mongoose.isValidObjectId(userId)) {
+      return res
+        .status(400)
+        .json(errorResponse(400, "Malformed user ID in token"));
     }
-}
+
+    const user = await UserModel.findById(userId)
+      .select("name address role email phone id");
+       console.log("Fetched user:", user); // 👈 ADD THIS
+    if (!user) {
+      return res
+        .status(404)
+        .json(errorResponse(404, "User not found not registered"));
+    }
+
+    return res
+      .status(200)
+      .json(successResponse(200, "Get One User Detail", user));
+  } catch (err) {
+    console.error("getOneUser error:", err);
+    return res
+      .status(500)
+      .json(errorResponse(500, "Server Error"));
+  }
+};

@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const advertisementSchema = new mongoose.Schema({
-  business: { type: mongoose.Schema.Types.ObjectId, ref: 'Business', required: true },
+  business: { type: mongoose.Schema.Types.ObjectId, ref: 'Business'},
   title: { type: String, required: true },
   description: String,
   image: String,

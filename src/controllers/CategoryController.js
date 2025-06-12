@@ -64,14 +64,14 @@ module.exports.deleteCategory = async(req,res)=>{
 };
 
 module.exports.searchCategory = async (req,res)=>{
-   const { query, isActive } = req.query;
+   const { name, isActive } = req.name;
 
   const filter = {};
 
-  if (query) {
+  if (name) {
     filter.$or = [
-      { name: { $regex: query, $options: 'i' } },
-      { description: { $regex: query, $options: 'i' } }
+      { name: { $regex: name, $options: 'i' } },
+      { description: { $regex: discription, $options: 'i' } }
     ];
   }
 
