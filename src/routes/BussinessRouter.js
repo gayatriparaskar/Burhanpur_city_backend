@@ -9,7 +9,7 @@ const BussinessRouter = express.Router();
 
 BussinessRouter.post("/createBuss", createBussiness);
 BussinessRouter.get("/getBuss", getBussiness);
-BussinessRouter.put("/updateBuss", updateBussiness);
-BussinessRouter.delete("/deleteBuss", deletedBuss);
+BussinessRouter.put("/updateBuss/:id", updateBussiness);
+BussinessRouter.delete("/deleteBuss/:id", deletedBuss);
 
 module.exports = BussinessRouter;
