@@ -7,7 +7,7 @@ const { createBussiness,getBussiness , updateBussiness ,deletedBuss , getMyBuss 
 
 const BussinessRouter = express.Router();
 
-BussinessRouter.post("/createBuss", createBussiness);
+BussinessRouter.post("/registerBuss", createBussiness);
 BussinessRouter.get("/getBuss", getBussiness);
 BussinessRouter.put("/updateBuss/:id", updateBussiness);
 BussinessRouter.delete("/deleteBuss/:id", deletedBuss);
