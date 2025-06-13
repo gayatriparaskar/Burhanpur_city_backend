@@ -119,3 +119,36 @@ module.exports.getMyBuss = async (req, res) => {
       .json(errorResponse(500, "Failed to fetch business", error.message));
   }
 };
+
+module.exports.searchBuss = async (req, res) => {
+  const { query, isActive } = req.query;
+  const filter = {};
+
+  if (query) {
+    // Search query in name, features, or speciality
+    filter.$or = [
+      { name: { $regex: query, $options: 'i' } },
+      { features: { $regex: query, $options: 'i' } },
+      { speciality: { $regex: query, $options: 'i' } }
+    ];
+  }
+
+  if (isActive !== undefined) {
+    filter.isActive = isActive === 'true';
+  }
+
+  try {
+    const business = await BussinessModel.find(filter);
+
+    if (business.length === 0) {
+      return res
+        .status(200)
+        .json(successResponse(200, "No businesses found matching the search criteria"));
+    }
+
+    return res.status(200).json(successResponse(200, "Business found", business));
+  } catch (error) {
+    return res.status(500).json(errorResponse(500, "Server error", error.message));
+  }
+};
+
