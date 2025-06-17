@@ -125,11 +125,11 @@ module.exports.searchBuss = async (req, res) => {
   const filter = {};
 
   if (query) {
-    // Search query in name, features, or speciality
     filter.$or = [
       { name: { $regex: query, $options: 'i' } },
-      { features: { $regex: query, $options: 'i' } },
-      { speciality: { $regex: query, $options: 'i' } }
+      { speciality: { $regex: query, $options: 'i' } },
+      { features: { $elemMatch: { $regex: query, $options: 'i' } } },
+      { keyWords: { $elemMatch: { $regex: query, $options: 'i' } } }
     ];
   }
 
@@ -146,9 +146,12 @@ module.exports.searchBuss = async (req, res) => {
         .json(successResponse(200, "No businesses found matching the search criteria"));
     }
 
-    return res.status(200).json(successResponse(200, "Business found", business));
+    return res
+      .status(200)
+      .json(successResponse(200, "Filtered business data found", business));
   } catch (error) {
-    return res.status(500).json(errorResponse(500, "Server error", error.message));
+    return res
+      .status(500)
+      .json(errorResponse(500, "Server error", error.message));
   }
 };
-
