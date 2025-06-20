@@ -18,7 +18,13 @@ phone: {
 },
   address: { type: String },
   createdAt: { type: Date, default: Date.now },
-  isActive: { type: Boolean, default: true }
+  isActive: { type: Boolean, default: true },
+  planId: { type: mongoose.Types.ObjectId, ref: "Plan" },
+planName: { type: String },
+paymentDone: { type: Boolean, default: false },
+paymentDoneOn: { type: Date },
+lastPaymentAmount: { type: Number },
+paymentMethod: { type: String }
 });
 
 const UserModel = mongoose.model('User', userSchema);

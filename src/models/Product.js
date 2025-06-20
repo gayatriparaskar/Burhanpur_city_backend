@@ -10,7 +10,9 @@ const productSchema = new mongoose.Schema({
     inStock:{type:Boolean},
     quantity:{type:String},
     feature:{type:String},
+
     speciality:{type:String},
+
     keyWord:[String],
     rating:{type:Number},
     review:{type:String},
@@ -18,4 +20,6 @@ const productSchema = new mongoose.Schema({
 })
  
 const ProductModel =  mongoose.model("Products",productSchema);
+
 module.exports =  ProductModel;
+
