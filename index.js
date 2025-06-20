@@ -13,7 +13,8 @@ const subcategoryRoutes = require('./src/routes/SubCategoryRouter');
 const jobRoutes = require('./src/routes/JobRouter');
 
 const advertisementRoutes = require('./src/routes/AdvertisementRouter');
-const planRoutes = require("./src/routes/PlanRouter");
+const productrouter = require('./src/routes/productRoutes")
+const planRoutes = require("./src/routes/PlanRouter")
 
 
 dotenv.config();
@@ -36,7 +37,8 @@ app.use('/api/jobs', jobRoutes);
 app.use('/api/plan', planRoutes);
 // app.use('/api/advertisements', advertisementRoutes
 app.use('/api/advertisements', advertisementRoutes);
-app.use("/api/plan", planRoutes);
+
+app.use('/api/Product',productrouter);
 
 
 
