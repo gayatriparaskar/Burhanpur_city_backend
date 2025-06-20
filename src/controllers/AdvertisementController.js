@@ -1,4 +1,3 @@
-const express =  require("express");
 const Advertisement = require('../models/Advertisement');
 
 // Create new advertisement
@@ -12,7 +11,7 @@ exports.createAdvertisement = async (req, res) => {
   }
 };
 
-// Get all advertisements (with optional filters)
+// Get all advertisements (with optional isActive filter)
 exports.getAllAdvertisements = async (req, res) => {
   try {
     const filter = {};
@@ -30,7 +29,9 @@ exports.getAllAdvertisements = async (req, res) => {
 exports.getAdvertisementById = async (req, res) => {
   try {
     const advertisement = await Advertisement.findById(req.params.id).populate('business');
-    if (!advertisement) return res.status(404).json({ message: 'Advertisement not found' });
+    if (!advertisement) {
+      return res.status(404).json({ message: 'Advertisement not found' });
+    }
     res.status(200).json(advertisement);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -40,11 +41,14 @@ exports.getAdvertisementById = async (req, res) => {
 // Update advertisement by ID
 exports.updateAdvertisement = async (req, res) => {
   try {
-    const advertisement = await Advertisement.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-      runValidators: true
-    });
-    if (!advertisement) return res.status(404).json({ message: 'Advertisement not found' });
+    const advertisement = await Advertisement.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true, runValidators: true }
+    );
+    if (!advertisement) {
+      return res.status(404).json({ message: 'Advertisement not found' });
+    }
     res.status(200).json(advertisement);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -55,8 +59,23 @@ exports.updateAdvertisement = async (req, res) => {
 exports.deleteAdvertisement = async (req, res) => {
   try {
     const advertisement = await Advertisement.findByIdAndDelete(req.params.id);
-    if (!advertisement) return res.status(404).json({ message: 'Advertisement not found' });
+    if (!advertisement) {
+      return res.status(404).json({ message: 'Advertisement not found' });
+    }
     res.status(200).json({ message: 'Advertisement deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Get Top 10 latest advertisements
+exports.getTop10Advertisements = async (req, res) => {
+  try {
+    const advertisements = await Advertisement.find({ isActive: true })
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .populate('business');
+    res.status(200).json(advertisements);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
