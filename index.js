@@ -14,6 +14,7 @@ const jobRoutes = require('./src/routes/JobRouter');
 
 const advertisementRoutes = require('./src/routes/AdvertisementRouter');
 const planRoutes = require("./src/routes/PlanRouter");
+const productRouter = require("./src/routes/ProductRouter"); // ✅ adjust path if needed
 
 
 dotenv.config();
@@ -37,7 +38,7 @@ app.use('/api/plan', planRoutes);
 // app.use('/api/advertisements', advertisementRoutes
 app.use('/api/advertisements', advertisementRoutes);
 app.use("/api/plan", planRoutes);
-
+app.use("/api/product", productRouter); // ✅ mount router here
 
 
 // Error handling middleware

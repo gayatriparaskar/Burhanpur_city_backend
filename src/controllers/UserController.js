@@ -99,11 +99,15 @@ module.exports.login = async (req, res) => {
       return res.status(401).json(errorResponse(401, "Invalid credentials"));
     }
 
+     // Remove password before sending response
+    const userWithoutPassword = user.toObject();
+    delete userWithoutPassword.password;
+
     const payload = { id: user._id, role: user.role };
     const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "2h" });
     return res
       .status(200)
-      .json(successResponse(200, "Login successful", { token }));
+      .json(successResponse(200, "Login successful", { token , user:userWithoutPassword}));
   } catch (err) {
     console.error("Login error:", err);
     return res.status(500).json(errorResponse(500, "Server Error"));
