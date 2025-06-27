@@ -66,6 +66,31 @@ module.exports.getBussiness = async (req, res) => {
   }
 };
 
+module.exports.getBussinessById = async (req, res) => {
+  try {
+    const userId = req.params.id;
+
+    const businesses = await BussinessModel.find({ owner: userId })
+      .populate("category", "id name")
+      .populate("subCategory", "id name");
+
+        if (businesses.length === 0) {
+      return res
+        .status(404)
+        .json(errorResponse(404, "User has not registered any business"));
+    }
+    
+    res
+      .status(200)
+      .json(successResponse(200, "Businesses created by user", businesses));
+  } catch (error) {
+    res
+      .status(500)
+      .json(errorResponse(500, error.message || "Something went wrong"));
+  }
+};
+
+
 module.exports.updateBussiness = async (req, res) => {
   try {
     const id = req.params.id;
