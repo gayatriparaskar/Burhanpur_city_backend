@@ -161,9 +161,7 @@ module.exports.getMyBuss = async (req, res) => {
   try {
     const userId = req.userId; // ✅ from auth middleware
 
-    const myBuss = await BussinessModel.find({ owner: userId }).select(
-      "name description contact address"
-    );
+    const myBuss = await BussinessModel.find({ owner: userId});
 
     if (!myBuss) {
       return res
