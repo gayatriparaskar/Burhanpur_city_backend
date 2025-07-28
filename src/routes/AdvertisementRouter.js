@@ -9,12 +9,12 @@ advertisementRoutes.post('/registerAdd', createAdvertisement);
 advertisementRoutes.get('/getAllAdd', getAllAdvertisements);
 
 // GET /advertisements/:id
-advertisementRoutes.get('/getAddById:id', getAdvertisementById);
+advertisementRoutes.get('/getAddById/:id', getAdvertisementById);
 
 // PUT /advertisements/:id
-advertisementRoutes.put('/updateAdd:id', updateAdvertisement);
+advertisementRoutes.put('/updateAdd/:id', updateAdvertisement);
 
 // DELETE /advertisements/:id
-advertisementRoutes.delete('/deleteAdd:id', deleteAdvertisement);
+advertisementRoutes.delete('/deleteAdd/:id', deleteAdvertisement);
 
 module.exports = advertisementRoutes;

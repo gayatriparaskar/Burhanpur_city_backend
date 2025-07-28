@@ -7,6 +7,7 @@ const advertisementSchema = new mongoose.Schema({
   image: String,
   url: String,
   position: { type: String, enum: ['home_banner', 'sidebar', 'footer'] },
+  addType:{type:String,enum:["popUp","product","slider"]},
   startDate: Date,
   endDate: Date,
   isActive: { type: Boolean, default: true },

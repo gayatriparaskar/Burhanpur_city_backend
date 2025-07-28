@@ -15,11 +15,7 @@ exports.createAdvertisement = async (req, res) => {
 // Get all advertisements (with optional filters)
 exports.getAllAdvertisements = async (req, res) => {
   try {
-    const filter = {};
-    if (req.query.isActive !== undefined) {
-      filter.isActive = req.query.isActive === 'true';
-    }
-    const advertisements = await Advertisement.find(filter).populate('business');
+    const advertisements = await Advertisement.find();
     res.status(200).json(advertisements);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -29,7 +25,8 @@ exports.getAllAdvertisements = async (req, res) => {
 // Get single advertisement by ID
 exports.getAdvertisementById = async (req, res) => {
   try {
-    const advertisement = await Advertisement.findById(req.params.id).populate('business');
+    const id = req.params.id;
+    const advertisement = await Advertisement.findById(id);
     if (!advertisement) return res.status(404).json({ message: 'Advertisement not found' });
     res.status(200).json(advertisement);
   } catch (error) {
