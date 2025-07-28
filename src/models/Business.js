@@ -4,7 +4,7 @@ const businessSchema = new mongoose.Schema({
   name: { type: String, required: true },
   owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   category: { type: mongoose.Schema.Types.ObjectId, ref: 'Category', required: true },
-  subCategory: { type: mongoose.Schema.Types.ObjectId, ref: 'SubCategory',required :false },
+  subCategory: { type: mongoose.Schema.Types.ObjectId, ref: 'SubCategory',required :true },
   description: String,
   address: {
     street: String,
@@ -36,6 +36,10 @@ const businessSchema = new mongoose.Schema({
   lead:[{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   isVerified: { type: Boolean, default: false },
   isActive: { type: Boolean, default: true },
+  // new 
+  revenue: { type: Number, default: 0 },
+  activeLeads: { type: Number, default: 0 },
+  conversionRate: { type: Number, default: 0 },
   createdAt: { type: Date, default: Date.now }
 });
 

@@ -8,39 +8,73 @@ module.exports.createBussiness = async (req, res) => {
   try {
     const data = req.body;
 
-    // 1. Optional: Check if subCategory exists if provided
-    if (data.subCategory) {
-      const subCategoryExists = await SubCategoryModel.findById(data.subCategory);
-      if (!subCategoryExists) {
+    // Trim business name
+    const name = data.name.trim();
+    data.name = name;
+
+    // Validate category presence
+    if (!data.category) {
+      return res.status(400).json(errorResponse(400, "Category is required"));
+    }
+
+    // Handle subCategory - either as ID or name
+    if (!data.subCategory) {
+      return res.status(400).json(errorResponse(400, "subCategory is required"));
+    }
+
+    let subCategoryId;
+
+    // If it's not a valid ObjectId, treat as name
+    const isValidObjectId = mongoose.Types.ObjectId.isValid(data.subCategory);
+    if (!isValidObjectId) {
+      // Find or create subcategory by name
+      let subCategoryDoc = await SubCategoryModel.findOne({
+        name: data.subCategory.trim(),
+        category: data.category,
+      });
+
+      if (!subCategoryDoc) {
+        subCategoryDoc = new SubCategoryModel({
+          name: data.subCategory.trim(),
+          category: data.category,
+        });
+        await subCategoryDoc.save();
+      }
+
+      subCategoryId = subCategoryDoc._id;
+    } else {
+      // If it's a valid ObjectId, confirm it exists
+      const subCategoryDoc = await SubCategoryModel.findById(data.subCategory);
+      if (!subCategoryDoc) {
         return res.status(400).json(errorResponse(400, "Invalid subCategory ID"));
       }
+
+      subCategoryId = subCategoryDoc._id;
     }
 
-     // 2. Check if business with same name exists in the same subCategory (optional)
-    const name = data.name.trim();
-    const query = { name };
-    if (data.subCategory) {
-      query.subCategory = data.subCategory;
-    }
+    data.subCategory = subCategoryId;
 
-    const existingBusiness = await BussinessModel.findOne(query).collation({ locale: "en", strength: 2 });
+    // Check for existing business in same subCategory
+    const existingBusiness = await BussinessModel.findOne({
+      name: data.name,
+      subCategory: data.subCategory,
+    }).collation({ locale: "en", strength: 2 });
 
-     if (existingBusiness) {
+    if (existingBusiness) {
       return res
-        .status(404)
-        .json(errorResponse(404, "Business already exists", existingBusiness));
+        .status(409)
+        .json(errorResponse(409, "Business already exists", existingBusiness));
     }
 
-
-    // 3. Save new business
+    // Create new business
     const newBusiness = new BussinessModel(data);
     await newBusiness.save();
 
-    // 4. Populate references
+    // Populate references
     await newBusiness.populate([
-      { path: "category", select: "id name" },
-      { path: "owner", select: "id name" },
-      { path: "subCategory", select: "id name" },
+      { path: "category", select: "_id name" },
+      { path: "owner", select: "_id name" },
+      { path: "subCategory", select: "_id name" },
     ]);
 
     return res
@@ -52,6 +86,8 @@ module.exports.createBussiness = async (req, res) => {
       .json(errorResponse(500, "Something went wrong", error.message));
   }
 };
+
+
 
 module.exports.getBussiness = async (req, res) => {
   try {

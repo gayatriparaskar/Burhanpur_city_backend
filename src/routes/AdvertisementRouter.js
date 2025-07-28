@@ -1,20 +1,20 @@
 const express = require('express');
 const advertisementRoutes = express.Router();
-const advertisementController = require('../controllers/AdvertisementController');
+const {createAdvertisement,getAllAdvertisements, getAdvertisementById,updateAdvertisement,  deleteAdvertisement } = require('../controllers/AdvertisementController');
 
 // POST /advertisements
-advertisementRoutes.post('/registerAdd', advertisementController.createAdvertisement);
+advertisementRoutes.post('/registerAdd', createAdvertisement);
 
 // GET /advertisements
-advertisementRoutes.get('/getAllAdd', advertisementController.getAllAdvertisements);
+advertisementRoutes.get('/getAllAdd', getAllAdvertisements);
 
 // GET /advertisements/:id
-advertisementRoutes.get('/getAddById:id', advertisementController.getAdvertisementById);
+advertisementRoutes.get('/getAddById:id', getAdvertisementById);
 
 // PUT /advertisements/:id
-advertisementRoutes.put('/updateAdd:id', advertisementController.updateAdvertisement);
+advertisementRoutes.put('/updateAdd:id', updateAdvertisement);
 
 // DELETE /advertisements/:id
-advertisementRoutes.delete('/deleteAdd:id', advertisementController.deleteAdvertisement);
+advertisementRoutes.delete('/deleteAdd:id', deleteAdvertisement);
 
 module.exports = advertisementRoutes;

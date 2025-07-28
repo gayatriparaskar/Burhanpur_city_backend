@@ -1,6 +1,7 @@
 const express = require("express");
 const SubCategoryModel = require("../models/SubCategory");
 const { errorResponse, successResponse } = require("../helper/successAndError");
+const BussinessModel = require("../models/Business");
 
 module.exports.createSubCat = async (req, res) => {
   try {
@@ -85,7 +86,7 @@ module.exports.createSubCat = async (req, res) => {
   }
 };
 
-module.exports.getSubCategoryOne = async (req, res) => {
+module.exports.getSubCategoryByParent = async (req, res) => {
   try {
     const { categoryId } = req.params;
     const subcategoryDetail = await SubCategoryModel.find({ category: categoryId });
@@ -100,6 +101,34 @@ module.exports.getSubCategoryOne = async (req, res) => {
       500,
       "Category not found",
       error
+    ));
+  }
+};
+module.exports.getSubCategoryOne = async (req, res) => {
+  try {
+    const id = req.params.id;
+
+    // ✅ Ensure this line is present
+    const subcategoryDetail = await SubCategoryModel.findById(id);
+    if (!subcategoryDetail) {
+      return res.status(404).json(errorResponse(404, "Subcategory not found"));
+    }
+
+    const businesses = await BussinessModel.find({ subCategory: id });
+
+    res.status(200).json(successResponse(
+      200,
+      "Subcategory and its businesses fetched successfully",
+      {
+        subcategory: subcategoryDetail,
+        businesses: businesses,
+      }
+    ));
+  } catch (error) {
+    res.status(500).json(errorResponse(
+      500,
+      "Something went wrong while fetching data",
+      error.message  // Use error.message to make error response readable
     ));
   }
 };
