@@ -1,4 +1,7 @@
-const CategoryModel = require ("../models/Category");
+const CategoryModel = require("../models/Category");
+const SubcategoryModel = require("../models/SubCategory");
+const BusinessModel = require("../models/Business");
+const ProductModel = require("../models/Product");
 const { errorResponse, successResponse } = require("../helper/successAndError");
 
 module.exports.createCategory = async (req, res) => {
@@ -106,3 +109,88 @@ module.exports.searchCategory = async (req,res)=>{
     });
   }
 }
+
+
+module.exports.searchAll = async (req, res) => {
+  const { query, type } = req.query;
+
+  if (!query) {
+    return res.status(400).json({ success: false, message: "Search query is required." });
+  }
+
+  const regex = new RegExp(query, "i"); // case-insensitive regex
+  const results = {};
+  const searches = [];
+
+  if (!type || type === "category") {
+    searches.push(
+      CategoryModel.find({
+        $or: [
+          { name: regex },
+          { description: regex },
+          { type: regex }
+        ]
+      }).then(data => results.categories = data)
+    );
+  }
+
+  if (!type || type === "subcategory") {
+    searches.push(
+      SubcategoryModel.find({
+        $or: [
+          { name: regex },
+          { title: regex },
+          { description: regex }
+        ]
+      }).then(data => results.subcategories = data)
+    );
+  }
+
+  if (!type || type === "business") {
+    searches.push(
+      BusinessModel.find({
+        $or: [
+          { name: regex },
+          { description: regex },
+          { "address.city": regex },
+          { "address.state": regex },
+          { specility: regex },
+          { block: regex },
+          { features: regex },
+          { keyWords: regex }
+        ]
+      }).then(data => results.businesses = data)
+    );
+  }
+
+  if (!type || type === "product") {
+    searches.push(
+      ProductModel.find({
+        $or: [
+          { name: regex },
+          { description: regex },
+          { brand: regex },
+          { feature: regex },
+          { speciality: regex },
+          { keyWord: regex },
+          { review: regex }
+        ]
+      }).then(data => results.products = data)
+    );
+  }
+
+  try {
+    await Promise.all(searches);
+    res.status(200).json({
+      success: true,
+      message: "Search results fetched",
+      data: results
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message || error
+    });
+  }
+};

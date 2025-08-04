@@ -214,3 +214,71 @@ module.exports.searchBuss = async (req, res) => {
       .json(errorResponse(500, "Server error", error.message));
   }
 };
+
+module.exports.getBusinessStats = async (req, res) => {
+  try {
+    const totalBusinesses = await BussinessModel.countDocuments();
+
+    const verifiedBusinesses = await BussinessModel.countDocuments({ isVerified: true });
+    const activeBusinesses = await BussinessModel.countDocuments({ isActive: true });
+
+    const totalRevenue = await BussinessModel.aggregate([
+      { $group: { _id: null, total: { $sum: "$revenue" } } }
+    ]);
+
+    const averageConversion = await BussinessModel.aggregate([
+      { $group: { _id: null, average: { $avg: "$conversionRate" } } }
+    ]);
+
+    const businessesPerMonth = await BussinessModel.aggregate([
+      {
+        $group: {
+          _id: {
+            year: { $year: "$createdAt" },
+            month: { $month: "$createdAt" }
+          },
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { "_id.year": 1, "_id.month": 1 } }
+    ]);
+
+    res.status(200).json(successResponse(200, "Business analytics fetched", {
+      totalBusinesses,
+      verifiedBusinesses,
+      activeBusinesses,
+      totalRevenue: totalRevenue[0]?.total || 0,
+      averageConversionRate: averageConversion[0]?.average?.toFixed(2) || 0,
+      businessesPerMonth
+    }));
+  } catch (error) {
+    res.status(500).json(errorResponse(500, "Failed to fetch stats", error.message));
+  }
+};
+
+module.exports.getSingleBusinessStats = async (req, res) => {
+  try {
+    const id = req.params.id; // Business ID from URL
+
+    const business = await BussinessModel.findById(id);
+
+    if (!business) {
+      return res.status(404).json(errorResponse(404, "Business not found"));
+    }
+
+    const stats = {
+      name: business.name,
+      isVerified: business.isVerified,
+      isActive: business.isActive,
+      revenue: business.revenue,
+      conversionRate: business.conversionRate,
+      activeLeads: business.activeLeads,
+      createdAt: business.createdAt,
+    };
+
+    return res.status(200).json(successResponse(200, "Business analytics fetched", stats));
+  } catch (error) {
+    res.status(500).json(errorResponse(500, "Failed to fetch business stats", error.message));
+  }
+};
+
