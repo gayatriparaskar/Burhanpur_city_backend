@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const BussinessModel = require("../models/Business");
 const { errorResponse, successResponse } = require("../helper/successAndError");
+const UserModel = require("../models/User"); // adjust path accordingly
 
 const SubCategoryModel = require("../models/SubCategory"); // Adjust path as needed
 
@@ -287,11 +288,29 @@ module.exports.addLeadToBusiness = async (req, res) => {
     const businessId = req.params.id;
     const { userId } = req.body;
 
+    // Get full user data
+    const user = await UserModel.findById(userId).select("name email phone_number isActive");
+
+    if (!user) {
+      return res.status(404).json(errorResponse(404, "User not found"));
+    }
+
+    // Embed user data (instead of just ID) into lead array
     const business = await BussinessModel.findByIdAndUpdate(
       businessId,
-      { $addToSet: { lead: userId } }, // avoids duplicates
+      {
+        $addToSet: {
+          lead: {
+            _id: user._id, // still keep reference
+            name: user.name,
+            email: user.email,
+            phone: user.phone,
+            isActive: user.isActive,
+          }
+        }
+      },
       { new: true, runValidators: true }
-    ).populate("lead", "name email phone isActive ");
+    );
 
     if (!business) {
       return res.status(404).json(errorResponse(404, "Business not found"));
@@ -306,4 +325,5 @@ module.exports.addLeadToBusiness = async (req, res) => {
     res.status(500).json(errorResponse(500, "Failed to add lead", error.message));
   }
 };
+
 

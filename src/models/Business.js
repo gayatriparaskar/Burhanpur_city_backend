@@ -33,7 +33,15 @@ const businessSchema = new mongoose.Schema({
   block:{type:String},
   features:[String],
   keyWords:[String],
-  lead:[{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+ lead: [
+  {
+    _id: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    name: String,
+    email: String,
+    phone_number: String,
+    isActive: Boolean
+  }
+],
   isVerified: { type: Boolean, default: false },
   isActive: { type: Boolean, default: true },
   // new 
