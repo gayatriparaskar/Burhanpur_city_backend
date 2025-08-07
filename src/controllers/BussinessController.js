@@ -282,3 +282,28 @@ module.exports.getSingleBusinessStats = async (req, res) => {
   }
 };
 
+module.exports.addLeadToBusiness = async (req, res) => {
+  try {
+    const businessId = req.params.id;
+    const { userId } = req.body;
+
+    const business = await BussinessModel.findByIdAndUpdate(
+      businessId,
+      { $addToSet: { lead: userId } }, // avoids duplicates
+      { new: true, runValidators: true }
+    ).populate("lead", "name email phone isActive ");
+
+    if (!business) {
+      return res.status(404).json(errorResponse(404, "Business not found"));
+    }
+
+    // Update activeLeads count
+    business.activeLeads = business.lead.length;
+    // await business.save();
+
+    res.status(200).json(successResponse(200, "Lead added successfully", business));
+  } catch (error) {
+    res.status(500).json(errorResponse(500, "Failed to add lead", error.message));
+  }
+};
+
