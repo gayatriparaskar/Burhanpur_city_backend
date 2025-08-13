@@ -15,7 +15,7 @@ exports.createProduct = async (req, res) => {
 // Get all products
 exports.getAllProducts = async (req, res) => {
   try {
-    const products = await Product.find();
+    const products = await ProductModel.find();
     res.status(200).json(successResponse(200, "Products retrieved successfully", products));
   } catch (error) {
     res.status(500).json(errorResponse(500, "Failed to retrieve products", error.message));
@@ -25,7 +25,7 @@ exports.getAllProducts = async (req, res) => {
 // Get product by ID
 exports.getProductById = async (req, res) => {
   try {
-    const product = await Product.findById(req.params.id);
+    const product = await ProductModel.findById(req.params.id);
     if (!product) {
       return res.status(404).json(errorResponse(404, "Product not found"));
     }
@@ -38,7 +38,7 @@ exports.getProductById = async (req, res) => {
 // Update product by ID
 exports.updateProduct = async (req, res) => {
   try {
-    const updatedProduct = await Product.findByIdAndUpdate(
+    const updatedProduct = await ProductModel.findByIdAndUpdate(
       req.params.id,
       req.body,
       { new: true, runValidators: true }
@@ -55,7 +55,7 @@ exports.updateProduct = async (req, res) => {
 // Delete product by ID
 exports.deleteProduct = async (req, res) => {
   try {
-    const deletedProduct = await Product.findByIdAndDelete(req.params.id);
+    const deletedProduct = await ProductModel.findByIdAndDelete(req.params.id);
     if (!deletedProduct) {
       return res.status(404).json(errorResponse(404, "Product not found"));
     }
