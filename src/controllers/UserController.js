@@ -146,80 +146,49 @@ module.exports.getOneUser = async (req, res) => {
   }
 };
 
-module.exports.searchUsers = async (req, res) => {
-  try {
-    const { 
-      query, 
-      role, 
-      isActive, 
-      page = 1, 
-      limit = 10,
-      sortBy = 'createdAt',
-      sortOrder = 'desc'
-    } = req.query;
+module.exports.searchUser = async (req,res)=>{
+  const { name, phone, isActive } = req.query;
 
-    // Build search filter
-    const filter = {};
+ const filter = {};
 
-    // Text search across name and phone number only
-    if (query) {
-      filter.$or = [
-        { name: { $regex: query, $options: 'i' } },
-        { phone: { $regex: query, $options: 'i' } }
-      ];
-    }
+ if (name || phone) {
+   filter.$or = [
+     { name: { $regex: name || '', $options: 'i' } },
+     { phone: { $regex: phone || '', $options: 'i' } }
+   ];
+ }
 
-    // Filter by role
-    if (role) {
-      filter.role = role;
-    }
+ if (isActive !== undefined) {
+   filter.isActive = isActive === 'true';
+ }
 
-    // Filter by active status
-    if (isActive !== undefined) {
-      filter.isActive = isActive === 'true';
-    }
+ try {
+   const users = await UserModel.findOne(filter);
 
-    // Calculate pagination
-    const skip = (parseInt(page) - 1) * parseInt(limit);
+   // ✅ Yeh check karega agar empty hai
+   if (users.length === 0) {
+     return res.status(200).json({
+       success: true,
+       message: 'No users found matching the search criteria',
+       data: []
+     });
+   }
 
-    // Build sort object
-    const sort = {};
-    sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
+   // ✅ Agar mil gaya to
+   return res.status(200).json({
+     success: true,
+     message: 'Users found',
+     data: users
+   });
 
-    // Execute search with pagination
-    const users = await UserModel.find(filter)
-      .select('-password') // Exclude password from results
-      .sort(sort)
-      .skip(skip)
-      .limit(parseInt(limit));
-
-    // Get total count for pagination
-    const totalUsers = await UserModel.countDocuments(filter);
-    const totalPages = Math.ceil(totalUsers / parseInt(limit));
-
-    // Prepare response data
-    const responseData = {
-      users,
-      pagination: {
-        currentPage: parseInt(page),
-        totalPages,
-        totalUsers,
-        hasNextPage: parseInt(page) < totalPages,
-        hasPrevPage: parseInt(page) > 1,
-        limit: parseInt(limit)
-      }
-    };
-
-    res.status(200).json(
-      successResponse(200, "Users searched successfully", responseData)
-    );
-  } catch (error) {
-    console.error("Search users error:", error);
-    res.status(500).json(
-      errorResponse(500, "Failed to search users", error.message)
-    );
-  }
-};
+ } catch (error) {
+   return res.status(500).json({
+     success: false,
+     message: 'Server Error',
+     error: error.message || error
+   });
+ }
+}
 
 module.exports.getUsersByRole = async (req, res) => {
   try {

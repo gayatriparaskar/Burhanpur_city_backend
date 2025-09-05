@@ -2,7 +2,7 @@
 const express = require ("express");
 const authentication = require ("../middleware/authentication");
 const checkRole = require("../middleware/authorization");
-const { createUser , getAllUser , updateUer , deleteUser , login , getOneUser , searchUsers , getUsersByRole } = require ("../controllers/UserController");
+const { createUser , getAllUser , updateUer , deleteUser , login , getOneUser , searchUser , getUsersByRole } = require ("../controllers/UserController");
 
 const userRouter = express.Router();
 
@@ -14,7 +14,7 @@ userRouter.post("/login",login);
 userRouter.get("/me",authentication,getOneUser);
 
 // Search routes
-userRouter.get("/search", authentication, searchUsers);
+userRouter.get("/search", authentication, searchUser);
 userRouter.get("/role/:role", authentication, getUsersByRole); 
 
 module.exports = userRouter ;
