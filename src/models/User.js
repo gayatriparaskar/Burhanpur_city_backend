@@ -21,10 +21,25 @@ phone: {
   isActive: { type: Boolean, default: true },
   planId: { type: mongoose.Types.ObjectId, ref: "Plan" },
 planName: { type: String },
-paymentDone: { type: Boolean, default: false },
-paymentDoneOn: { type: Date },
-lastPaymentAmount: { type: Number },
-paymentMethod: { type: String }
+  paymentDone: { type: Boolean, default: false },
+  paymentDoneOn: { type: Date },
+  lastPaymentAmount: { type: Number },
+  paymentMethod: { type: String },
+  // Socket-related fields
+  online_status: { 
+    type: String, 
+    enum: ["online", "offline"], 
+    default: "offline" 
+  },
+  last_seen: { type: Date },
+  // Push notification subscription
+  subscription: {
+    endpoint: { type: String },
+    keys: {
+      p256dh: { type: String },
+      auth: { type: String }
+    }
+  }
 });
 
 const UserModel = mongoose.model('User', userSchema);
