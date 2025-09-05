@@ -2,7 +2,7 @@
 const express = require ("express");
 const authentication = require ("../middleware/authentication");
 const checkRole = require("../middleware/authorization");
-const { createUser , getAllUser , updateUer , deleteUser , login , getOneUser } = require ("../controllers/UserController");
+const { createUser , getAllUser , updateUer , deleteUser , login , getOneUser , searchUsers , getUsersByRole } = require ("../controllers/UserController");
 
 const userRouter = express.Router();
 
@@ -11,7 +11,11 @@ userRouter.get("/userDetails",getAllUser);
 userRouter.put("/updatedUser/:id",updateUer);
 userRouter.delete("/deleteUser/:id",deleteUser);
 userRouter.post("/login",login);
-userRouter.get("/me",authentication,getOneUser); 
+userRouter.get("/me",authentication,getOneUser);
+
+// Search routes
+userRouter.get("/search", authentication, searchUsers);
+userRouter.get("/role/:role", authentication, getUsersByRole); 
 
 module.exports = userRouter ;
 

@@ -145,3 +145,129 @@ module.exports.getOneUser = async (req, res) => {
       .json(errorResponse(500, "Server Error"));
   }
 };
+
+module.exports.searchUsers = async (req, res) => {
+  try {
+    const { 
+      query, 
+      role, 
+      isActive, 
+      page = 1, 
+      limit = 10,
+      sortBy = 'createdAt',
+      sortOrder = 'desc'
+    } = req.query;
+
+    // Build search filter
+    const filter = {};
+
+    // Text search across name and phone number only
+    if (query) {
+      filter.$or = [
+        { name: { $regex: query, $options: 'i' } },
+        { phone: { $regex: query, $options: 'i' } }
+      ];
+    }
+
+    // Filter by role
+    if (role) {
+      filter.role = role;
+    }
+
+    // Filter by active status
+    if (isActive !== undefined) {
+      filter.isActive = isActive === 'true';
+    }
+
+    // Calculate pagination
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    // Build sort object
+    const sort = {};
+    sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
+
+    // Execute search with pagination
+    const users = await UserModel.find(filter)
+      .select('-password') // Exclude password from results
+      .sort(sort)
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    // Get total count for pagination
+    const totalUsers = await UserModel.countDocuments(filter);
+    const totalPages = Math.ceil(totalUsers / parseInt(limit));
+
+    // Prepare response data
+    const responseData = {
+      users,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages,
+        totalUsers,
+        hasNextPage: parseInt(page) < totalPages,
+        hasPrevPage: parseInt(page) > 1,
+        limit: parseInt(limit)
+      }
+    };
+
+    res.status(200).json(
+      successResponse(200, "Users searched successfully", responseData)
+    );
+  } catch (error) {
+    console.error("Search users error:", error);
+    res.status(500).json(
+      errorResponse(500, "Failed to search users", error.message)
+    );
+  }
+};
+
+module.exports.getUsersByRole = async (req, res) => {
+  try {
+    const { role } = req.params;
+    const { page = 1, limit = 10 } = req.query;
+
+    // Validate role
+    const validRoles = ['user', 'admin', 'owner'];
+    if (!validRoles.includes(role)) {
+      return res.status(400).json(
+        errorResponse(400, "Invalid role. Must be one of: user, admin, owner")
+      );
+    }
+
+    // Calculate pagination
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    // Get users by role
+    const users = await UserModel.find({ role })
+      .select('-password')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    // Get total count
+    const totalUsers = await UserModel.countDocuments({ role });
+    const totalPages = Math.ceil(totalUsers / parseInt(limit));
+
+    const responseData = {
+      users,
+      role,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages,
+        totalUsers,
+        hasNextPage: parseInt(page) < totalPages,
+        hasPrevPage: parseInt(page) > 1,
+        limit: parseInt(limit)
+      }
+    };
+
+    res.status(200).json(
+      successResponse(200, `Users with role '${role}' fetched successfully`, responseData)
+    );
+  } catch (error) {
+    console.error("Get users by role error:", error);
+    res.status(500).json(
+      errorResponse(500, "Failed to fetch users by role", error.message)
+    );
+  }
+};
