@@ -151,19 +151,29 @@ module.exports.searchUser = async (req,res)=>{
 
  const filter = {};
 
- if (name || phone) {
+ if (name && phone) {
+   // If both name and phone are provided, search in both fields
    filter.$or = [
-     { name: { $regex: name || '', $options: 'i' } },
-     { phone: { $regex: phone || '', $options: 'i' } }
+     { name: { $regex: name, $options: 'i' } },
+     { phone: { $regex: phone, $options: 'i' } }
    ];
+ } else if (name) {
+   // If only name is provided, search only in name field
+   filter.name = { $regex: name, $options: 'i' };
+ } else if (phone) {
+   // If only phone is provided, search only in phone field
+   filter.phone = { $regex: phone, $options: 'i' };
  }
 
  if (isActive !== undefined) {
    filter.isActive = isActive === 'true';
  }
 
+ console.log('Search parameters:', { name, phone, isActive });
+ console.log('Filter applied:', JSON.stringify(filter));
+
  try {
-   const users = await UserModel.findOne(filter);
+   const users = await UserModel.find(filter).select('-password');
 
    // ✅ Yeh check karega agar empty hai
    if (users.length === 0) {
