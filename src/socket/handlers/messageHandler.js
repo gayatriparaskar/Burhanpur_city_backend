@@ -29,26 +29,44 @@ const handleSendMessage = async (io, socket, data, callback) => {
       conversation = await ConversationGroup.findOne({ _id: conversationId });
     }
 
+    // If conversation doesn't exist and it's a 1on1 chat, create it
     if (!conversation && type === "1on1") {
-      if (!receiverId) return;
-      conversation = await ConversationGroup.create({
-        _id: conversationId,
-        type,
-        members: [{ _id: senderId }, { _id: receiverId }],
-        createdBy: senderId,
-        createdAt: new Date(),
-      });
+      if (!receiverId) {
+        if (callback) callback({ success: false, error: "Missing receiverId for 1on1 chat" });
+        return;
+      }
+      
+      try {
+        conversation = await ConversationGroup.create({
+          _id: conversationId,
+          type,
+          members: [{ _id: senderId }, { _id: receiverId }],
+          createdBy: senderId,
+          createdAt: new Date(),
+        });
 
-      [senderId, receiverId].forEach((memberId) => {
-        const sid = onlineUsers[memberId.toString()];
-        if (sid) {
-          io.to(sid).emit("newConvoCreated", { success: true, conversation });
-        }
-      });
+        // Notify both users about new conversation
+        [senderId, receiverId].forEach((memberId) => {
+          const sid = onlineUsers[memberId.toString()];
+          if (sid) {
+            io.to(sid).emit("newConvoCreated", { success: true, conversation });
+          }
+        });
+      } catch (convError) {
+        console.error("Error creating conversation:", convError);
+        if (callback) callback({ success: false, error: "Failed to create conversation: " + convError.message });
+        return;
+      }
     }
 
+    // If still no conversation found, return error
+    if (!conversation) {
+      if (callback) callback({ success: false, error: "Conversation not found and could not be created" });
+      return;
+    }
+
+    // Prepare message data - don't include _id to avoid duplicate key errors
     const chatData = {
-      _id,
       type,
       senderId,
       receiverId: receiverId,
@@ -61,7 +79,21 @@ const handleSendMessage = async (io, socket, data, callback) => {
       status: "save_on_server",
     };
 
+    // Only include _id if it's provided and not causing conflicts
+    if (_id && !await MessageModel.findById(_id)) {
+      chatData._id = _id;
+    }
+
     const savedMsg = await MessageModel.create(chatData);
+
+    // Update conversation's last message
+    await ConversationGroup.findByIdAndUpdate(
+      conversation._id,
+      { 
+        lastMessage: savedMsg._id,
+        lastMessageAt: new Date()
+      }
+    );
 
     // Emit to sender
     socket.emit("messageSent", { success: true, message: savedMsg });
