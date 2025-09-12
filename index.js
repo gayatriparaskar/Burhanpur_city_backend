@@ -20,6 +20,8 @@ const productRouter = require("./src/routes/ProductRouter"); // ✅ adjust path 
 const DashRouter = require('./src/routes/DashRoute');
 const BookingRouter = require('./src/routes/BookingRouter'); // Booking routes
 const saveSubscriptionRoute = require('./src/routes/saveSubscription'); // Push notification subscription
+const conversationRoutes = require('./src/routes/ConversationRouter'); // Conversation routes
+const messageRoutes = require('./src/routes/MessageRouter'); // Message routes
 
 
 
@@ -53,6 +55,8 @@ app.use("/api/dashboard", DashRouter);
 app.use("/api/product", productRouter); // ✅ mount router here
 app.use("/api/bookings",BookingRouter); // Booking routes
 app.use('/api/save-subscription', saveSubscriptionRoute); // Push notification subscription
+app.use('/api/conversations', conversationRoutes); // Conversation routes
+app.use('/api/messages', messageRoutes); // Message routes
 
 
 // Error handling middleware
