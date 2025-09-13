@@ -45,6 +45,9 @@ const handleSendMessage = async (io, socket, data, callback) => {
           createdAt: new Date(),
         });
 
+        console.log(conversation,"conversation created");
+        
+
         // Notify both users about new conversation
         [senderId, receiverId].forEach((memberId) => {
           const sid = onlineUsers[memberId.toString()];
@@ -85,7 +88,7 @@ const handleSendMessage = async (io, socket, data, callback) => {
     }
 
     const savedMsg = await MessageModel.create(chatData);
-
+     consiole.log("Message saved:", savedMsg);
     // Update conversation's last message
     await ConversationGroup.findByIdAndUpdate(
       conversation._id,
