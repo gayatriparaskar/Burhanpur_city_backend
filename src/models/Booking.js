@@ -3,9 +3,11 @@ const mongoose = require("mongoose");
 const bookingSchema = new mongoose.Schema({
   booking_id: { type: String, unique: true, required: true }, // Auto generated
   user_id: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true }, // Kisne booking ki
+  business_id: { type: mongoose.Schema.Types.ObjectId, ref: "Business", required: true }, // Business ID
+  product_id: { type: mongoose.Schema.Types.ObjectId, ref: "Products", required: true }, // Product ID
   type: { 
     type: String, 
-    enum: ["hotel", "doctor", "travel", "cab", "event", "hall", "service"], 
+    enum: ["Management & Service", "Product-based service"], 
     required: true 
   }, // Kis type ki booking hai
 

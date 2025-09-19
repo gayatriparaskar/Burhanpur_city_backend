@@ -1,14 +1,56 @@
 const Booking = require("../models/Booking");
+const Business = require("../models/Business");
+const Product = require("../models/Product");
 const { v4: uuidv4 } = require("uuid");
 
 // ✅ Create new booking
 exports.createBooking = async (req, res) => {
   try {
-    const bookingData = req.body;
-    bookingData.booking_id = "BK_" + uuidv4(); // unique ID
+    const { business_id, product_id, user_id, type, ...otherData } = req.body;
+    
+    // Validate required fields
+    if (!business_id || !product_id || !user_id || !type) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "business_id, product_id, user_id, and type are required" 
+      });
+    }
+
+    // Check if business exists
+    const business = await Business.findById(business_id);
+    if (!business) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Business not found" 
+      });
+    }
+
+    // Check if product exists
+    const product = await Product.findById(product_id);
+    if (!product) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Product not found" 
+      });
+    }
+
+    const bookingData = {
+      ...otherData,
+      business_id,
+      product_id,
+      user_id,
+      type
+    };
 
     const booking = new Booking(bookingData);
     await booking.save();
+
+    // Populate the booking with business and product details
+    await booking.populate([
+      { path: 'business_id', select: 'businessName email phone address' },
+      { path: 'product_id', select: 'name price description' },
+      { path: 'user_id', select: 'name email phone' }
+    ]);
 
     res.status(201).json({ success: true, message: "Booking created", data: booking });
   } catch (err) {
@@ -19,7 +61,13 @@ exports.createBooking = async (req, res) => {
 // ✅ Get booking by ID
 exports.getBookingById = async (req, res) => {
   try {
-    const booking = await Booking.findById(req.params.id);
+    const booking = await Booking.findById(req.params.id)
+      .populate([
+        { path: 'business_id', select: 'businessName email phone address' },
+        { path: 'product_id', select: 'name price description' },
+        { path: 'user_id', select: 'name email phone' }
+      ]);
+    
     if (!booking) return res.status(404).json({ success: false, message: "Booking not found" });
     res.json({ success: true, data: booking });
   } catch (err) {
@@ -30,7 +78,14 @@ exports.getBookingById = async (req, res) => {
 // ✅ Get bookings by User
 exports.getBookingsByUser = async (req, res) => {
   try {
-    const bookings = await Booking.find({ user_id: req.params.userId });
+    const bookings = await Booking.find({ user_id: req.params.userId })
+      .populate([
+        { path: 'business_id', select: 'businessName email phone address' },
+        { path: 'product_id', select: 'name price description' },
+        { path: 'user_id', select: 'name email phone' }
+      ])
+      .sort({ createdAt: -1 });
+    
     res.json({ success: true, count: bookings.length, data: bookings });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -40,7 +95,13 @@ exports.getBookingsByUser = async (req, res) => {
 // ✅ Update booking (status, payment, etc.)
 exports.updateBooking = async (req, res) => {
   try {
-    const booking = await Booking.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const booking = await Booking.findByIdAndUpdate(req.params.id, req.body, { new: true })
+      .populate([
+        { path: 'business_id', select: 'businessName email phone address' },
+        { path: 'product_id', select: 'name price description' },
+        { path: 'user_id', select: 'name email phone' }
+      ]);
+    
     if (!booking) return res.status(404).json({ success: false, message: "Booking not found" });
     res.json({ success: true, message: "Booking updated", data: booking });
   } catch (err) {
@@ -54,6 +115,66 @@ exports.deleteBooking = async (req, res) => {
     const booking = await Booking.findByIdAndDelete(req.params.id);
     if (!booking) return res.status(404).json({ success: false, message: "Booking not found" });
     res.json({ success: true, message: "Booking deleted" });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// ✅ Get bookings by Business
+exports.getBookingsByBusiness = async (req, res) => {
+  try {
+    const bookings = await Booking.find({ business_id: req.params.businessId })
+      .populate([
+        { path: 'business_id', select: 'businessName email phone address' },
+        { path: 'product_id', select: 'name price description' },
+        { path: 'user_id', select: 'name email phone' }
+      ])
+      .sort({ createdAt: -1 });
+    
+    res.json({ success: true, count: bookings.length, data: bookings });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// ✅ Get bookings by Product
+exports.getBookingsByProduct = async (req, res) => {
+  try {
+    const bookings = await Booking.find({ product_id: req.params.productId })
+      .populate([
+        { path: 'business_id', select: 'businessName email phone address' },
+        { path: 'product_id', select: 'name price description' },
+        { path: 'user_id', select: 'name email phone' }
+      ])
+      .sort({ createdAt: -1 });
+    
+    res.json({ success: true, count: bookings.length, data: bookings });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// ✅ Get all bookings with filters
+exports.getAllBookings = async (req, res) => {
+  try {
+    const { status, payment_status, type, business_id, product_id } = req.query;
+    const filter = {};
+    
+    if (status) filter.status = status;
+    if (payment_status) filter.payment_status = payment_status;
+    if (type) filter.type = type;
+    if (business_id) filter.business_id = business_id;
+    if (product_id) filter.product_id = product_id;
+
+    const bookings = await Booking.find(filter)
+      .populate([
+        { path: 'business_id', select: 'businessName email phone address' },
+        { path: 'product_id', select: 'name price description' },
+        { path: 'user_id', select: 'name email phone' }
+      ])
+      .sort({ createdAt: -1 });
+    
+    res.json({ success: true, count: bookings.length, data: bookings });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
