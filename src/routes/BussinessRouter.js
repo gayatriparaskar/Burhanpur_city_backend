@@ -2,7 +2,18 @@
 const express = require ("express");
 const authentication = require("../middleware/authentication");
 const checkRole = require("../middleware/authorization")
-const { createBussiness,getBussiness , updateBussiness ,deletedBuss , getMyBuss , searchBuss, getBussinessById,getBusinessStats,getSingleBusinessStats,addLeadToBusiness} = require ("../controllers/BussinessController");
+const { 
+  createBussiness,
+  getBussiness, 
+  updateBussiness,
+  deletedBuss, 
+  getMyBuss, 
+  searchBuss, 
+  getBussinessById,
+  getBusinessStats,
+  getSingleBusinessStats,
+  addLeadToBusiness
+} = require ("../controllers/BussinessController");
 
 
 const BussinessRouter = express.Router();

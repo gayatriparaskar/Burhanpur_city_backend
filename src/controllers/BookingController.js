@@ -1,6 +1,7 @@
 const Booking = require("../models/Booking");
 const Business = require("../models/Business");
 const Product = require("../models/Product");
+const User = require("../models/User");
 const { v4: uuidv4 } = require("uuid");
 
 // ✅ Create new booking
@@ -16,12 +17,49 @@ exports.createBooking = async (req, res) => {
       });
     }
 
-    // Check if business exists
+    // Check if user exists and is not blocked
+    const user = await User.findById(user_id);
+    if (!user) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "User not found" 
+      });
+    }
+
+    if (user.status === 'blocked') {
+      return res.status(403).json({ 
+        success: false, 
+        message: "Blocked users cannot create bookings. Please contact support." 
+      });
+    }
+
+    if (user.status === 'inactive') {
+      return res.status(403).json({ 
+        success: false, 
+        message: "Inactive users cannot create bookings. Please contact support to reactivate your account." 
+      });
+    }
+
+    // Check if business exists and is not blocked
     const business = await Business.findById(business_id);
     if (!business) {
       return res.status(404).json({ 
         success: false, 
         message: "Business not found" 
+      });
+    }
+
+    if (business.status === 'blocked') {
+      return res.status(403).json({ 
+        success: false, 
+        message: "This business is currently blocked and not accepting bookings." 
+      });
+    }
+
+    if (business.status === 'inactive') {
+      return res.status(403).json({ 
+        success: false, 
+        message: "This business is currently inactive and not accepting bookings." 
       });
     }
 

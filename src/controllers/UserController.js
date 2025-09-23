@@ -66,13 +66,24 @@ module.exports.updateUer = async (req,res)=>{
     try {
         const query = req.body;
         const id = req.params.id;
-        const updatedUser = await UserModel.findByIdAndUpdate(id,query,{
-            new:true,
-            runValidators:true
-        })
-        res.status(200).json(successResponse(200,"User is updated successfully",updatedUser));
+        
+        // Check if status is being updated and validate it
+        if (query.status && !['active', 'inactive', 'blocked'].includes(query.status)) {
+            return res.status(400).json(errorResponse(400, 'Invalid status. Must be active, inactive, or blocked'));
+        }
+        
+        const updatedUser = await UserModel.findByIdAndUpdate(id, query, {
+            new: true,
+            runValidators: true
+        });
+        
+        if (!updatedUser) {
+            return res.status(404).json(errorResponse(404, 'User not found'));
+        }
+        
+        res.status(200).json(successResponse(200, "User is updated successfully", updatedUser));
     } catch (error) {
-        res.status(500).json(errorResponse(500,"User is not Updated",error));
+        res.status(500).json(errorResponse(500, "User is not Updated", error));
     }
 };
 

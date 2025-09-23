@@ -132,10 +132,21 @@ module.exports.updateBussiness = async (req, res) => {
   try {
     const id = req.params.id;
     const query = req.body;
+    
+    // Check if status is being updated and validate it
+    if (query.status && !['active', 'inactive', 'blocked'].includes(query.status)) {
+      return res.status(400).json(errorResponse(400, 'Invalid status. Must be active, inactive, or blocked'));
+    }
+    
     const updatedBuss = await BussinessModel.findByIdAndUpdate(id, query, {
       new: true,
       runValidators: true,
     });
+    
+    if (!updatedBuss) {
+      return res.status(404).json(errorResponse(404, 'Business not found'));
+    }
+    
     res
       .status(200)
       .json(successResponse(200, "Bussiness is updated", updatedBuss));
@@ -325,5 +336,6 @@ module.exports.addLeadToBusiness = async (req, res) => {
     res.status(500).json(errorResponse(500, "Failed to add lead", error.message));
   }
 };
+
 
 

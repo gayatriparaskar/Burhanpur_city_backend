@@ -44,6 +44,12 @@ const businessSchema = new mongoose.Schema({
 ],
   isVerified: { type: Boolean, default: false },
   isActive: { type: Boolean, default: true },
+  status: { 
+    type: String, 
+    enum: ['active', 'inactive', 'blocked'], 
+    default: 'active' 
+  },
+  statusReason: { type: String }, // Reason for status change
   // new 
   revenue: { type: Number, default: 0 },
   activeLeads: { type: Number, default: 0 },
