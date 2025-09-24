@@ -212,3 +212,4 @@ When blocked/inactive users try to create bookings:
 This simplified approach makes status management part of the standard update workflow, making it easier to use and maintain!
 
 
+

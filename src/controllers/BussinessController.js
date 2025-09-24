@@ -560,5 +560,104 @@ module.exports.getBusinessApprovalHistory = async (req, res) => {
   }
 };
 
+// Admin function to get all businesses (regardless of approval status)
+module.exports.getAllBussiness = async (req, res) => {
+  try {
+    const { 
+      page = 1, 
+      limit = 10, 
+      approvalStatus, 
+      status, 
+      isActive, 
+      search,
+      sortBy = 'createdAt',
+      sortOrder = 'desc'
+    } = req.query;
+
+    // Build filter object
+    const filter = {};
+    
+    if (approvalStatus) {
+      filter.approvalStatus = approvalStatus;
+    }
+    
+    if (status) {
+      filter.status = status;
+    }
+    
+    if (isActive !== undefined) {
+      filter.isActive = isActive === 'true';
+    }
+    
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+        { specility: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    // Build sort object
+    const sort = {};
+    sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
+
+    const businesses = await BussinessModel.find(filter)
+      .populate('owner', 'name email phone')
+      .populate('approvedBy', 'name email')
+      .populate('category', 'name')
+      .populate('subCategory', 'name')
+      .sort(sort)
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
+
+    const total = await BussinessModel.countDocuments(filter);
+
+    // Get statistics
+    const stats = await BussinessModel.aggregate([
+      {
+        $group: {
+          _id: null,
+          total: { $sum: 1 },
+          pending: {
+            $sum: { $cond: [{ $eq: ['$approvalStatus', 'pending'] }, 1, 0] }
+          },
+          approved: {
+            $sum: { $cond: [{ $eq: ['$approvalStatus', 'approved'] }, 1, 0] }
+          },
+          rejected: {
+            $sum: { $cond: [{ $eq: ['$approvalStatus', 'rejected'] }, 1, 0] }
+          },
+          active: {
+            $sum: { $cond: [{ $eq: ['$isActive', true] }, 1, 0] }
+          },
+          inactive: {
+            $sum: { $cond: [{ $eq: ['$isActive', false] }, 1, 0] }
+          }
+        }
+      }
+    ]);
+
+    res.status(200).json(successResponse(200, "All businesses fetched", {
+      businesses,
+      pagination: {
+        totalPages: Math.ceil(total / limit),
+        currentPage: parseInt(page),
+        total,
+        limit: parseInt(limit)
+      },
+      stats: stats[0] || {
+        total: 0,
+        pending: 0,
+        approved: 0,
+        rejected: 0,
+        active: 0,
+        inactive: 0
+      }
+    }));
+  } catch (error) {
+    res.status(500).json(errorResponse(500, "Failed to fetch all businesses", error.message));
+  }
+};
+
 
 

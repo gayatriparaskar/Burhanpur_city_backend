@@ -16,7 +16,8 @@ const {
   approveBusiness,
   rejectBusiness,
   getPendingBusinesses,
-  getBusinessApprovalHistory
+  getBusinessApprovalHistory,
+  getAllBussiness
 } = require ("../controllers/BussinessController");
 
 
@@ -36,6 +37,7 @@ BussinessRouter.post('/add-lead/:id', addLeadToBusiness);
 // Admin routes for business approval
 BussinessRouter.get("/admin/pending", authentication, checkRole('admin'), getPendingBusinesses);
 BussinessRouter.get("/admin/history", authentication, checkRole('admin'), getBusinessApprovalHistory);
+BussinessRouter.get("/admin/all", authentication, checkRole('admin'), getAllBussiness);
 BussinessRouter.put("/admin/approve/:id", authentication, checkRole('admin'), approveBusiness);
 BussinessRouter.put("/admin/reject/:id", authentication, checkRole('admin'), rejectBusiness);
 
