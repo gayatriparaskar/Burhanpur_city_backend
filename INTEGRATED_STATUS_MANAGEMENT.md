@@ -335,3 +335,4 @@ GET /api/bussiness/status?status=active&page=1&limit=20
 
 This integrated approach provides comprehensive status management while maintaining a clean and organized API structure.
 
+

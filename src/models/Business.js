@@ -47,9 +47,18 @@ const businessSchema = new mongoose.Schema({
   status: { 
     type: String, 
     enum: ['active', 'inactive', 'blocked'], 
-    default: 'active' 
+    default: 'inactive' 
   },
   statusReason: { type: String }, // Reason for status change
+  approvalStatus: { 
+    type: String, 
+    enum: ['pending', 'approved', 'rejected'], 
+    default: 'pending' 
+  },
+  approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  approvedAt: { type: Date },
+  rejectionReason: { type: String },
+  submittedAt: { type: Date, default: Date.now },
   // new 
   revenue: { type: Number, default: 0 },
   activeLeads: { type: Number, default: 0 },

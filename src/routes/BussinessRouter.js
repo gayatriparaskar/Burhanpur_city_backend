@@ -1,7 +1,7 @@
 
 const express = require ("express");
 const authentication = require("../middleware/authentication");
-const checkRole = require("../middleware/authorization")
+const {checkRole} = require("../middleware/authorization")
 const { 
   createBussiness,
   getBussiness, 
@@ -12,7 +12,11 @@ const {
   getBussinessById,
   getBusinessStats,
   getSingleBusinessStats,
-  addLeadToBusiness
+  addLeadToBusiness,
+  approveBusiness,
+  rejectBusiness,
+  getPendingBusinesses,
+  getBusinessApprovalHistory
 } = require ("../controllers/BussinessController");
 
 
@@ -28,5 +32,11 @@ BussinessRouter.get("/searchBuss", searchBuss);
 BussinessRouter.get("/analytics", getBusinessStats);
 BussinessRouter.get("/analyticsForOne/:id", getSingleBusinessStats);
 BussinessRouter.post('/add-lead/:id', addLeadToBusiness);
+
+// Admin routes for business approval
+BussinessRouter.get("/admin/pending", authentication, checkRole('admin'), getPendingBusinesses);
+BussinessRouter.get("/admin/history", authentication, checkRole('admin'), getBusinessApprovalHistory);
+BussinessRouter.put("/admin/approve/:id", authentication, checkRole('admin'), approveBusiness);
+BussinessRouter.put("/admin/reject/:id", authentication, checkRole('admin'), rejectBusiness);
 
 module.exports = BussinessRouter;

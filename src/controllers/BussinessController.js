@@ -2,6 +2,8 @@ const mongoose = require("mongoose");
 const BussinessModel = require("../models/Business");
 const { errorResponse, successResponse } = require("../helper/successAndError");
 const UserModel = require("../models/User"); // adjust path accordingly
+const NotificationModel = require("../models/Notification");
+const { sendPushNotification } = require("../utils/sendPushNotification");
 
 const SubCategoryModel = require("../models/SubCategory"); // Adjust path as needed
 
@@ -67,9 +69,50 @@ module.exports.createBussiness = async (req, res) => {
         .json(errorResponse(409, "Business already exists", existingBusiness));
     }
 
+    // Set approval status to pending for new businesses
+    data.approvalStatus = 'pending';
+    data.isActive = false; // Business is inactive until approved
+
     // Create new business
     const newBusiness = new BussinessModel(data);
     await newBusiness.save();
+
+    // Find all admin users to send notification
+    const adminUsers = await UserModel.find({ role: 'admin' });
+    
+    // Create notifications for all admins
+    const notifications = adminUsers.map(admin => ({
+      title: 'New Business Approval Required',
+      message: `A new business "${data.name}" has been submitted and requires approval.`,
+      type: 'business_approval',
+      recipient: admin._id,
+      business: newBusiness._id,
+      data: {
+        businessId: newBusiness._id,
+        businessName: data.name,
+        ownerId: data.owner
+      }
+    }));
+
+    await NotificationModel.insertMany(notifications);
+
+    // Send push notifications to admins
+    for (const admin of adminUsers) {
+      if (admin.subscription && admin.subscription.endpoint) {
+        const payload = {
+          title: 'New Business Approval Required',
+          body: `A new business "${data.name}" has been submitted and requires approval.`,
+          icon: '/icon-192x192.png',
+          badge: '/badge-72x72.png',
+          data: {
+            businessId: newBusiness._id,
+            type: 'business_approval'
+          }
+        };
+        
+        await sendPushNotification(admin.subscription, payload);
+      }
+    }
 
     // Populate references
     await newBusiness.populate([
@@ -80,7 +123,7 @@ module.exports.createBussiness = async (req, res) => {
 
     return res
       .status(200)
-      .json(successResponse(200, "Business added successfully", newBusiness));
+      .json(successResponse(200, "Business submitted for approval", newBusiness));
   } catch (error) {
     return res
       .status(500)
@@ -92,7 +135,16 @@ module.exports.createBussiness = async (req, res) => {
 
 module.exports.getBussiness = async (req, res) => {
   try {
-    const getBussiness = await BussinessModel.find();
+    // Only show approved and active businesses to regular users
+    const getBussiness = await BussinessModel.find({ 
+      approvalStatus: 'approved',
+      isActive: true,
+      status: 'active'
+    })
+    .populate('category', 'name')
+    .populate('subCategory', 'name')
+    .populate('owner', 'name email phone');
+    
     res
       .status(200)
       .json(successResponse(200, "Get Bussiness model", getBussiness));
@@ -173,9 +225,12 @@ module.exports.getMyBuss = async (req, res) => {
   try {
     const userId = req.userId; // ✅ from auth middleware
 
-    const myBuss = await BussinessModel.find({ owner: userId});
+    const myBuss = await BussinessModel.find({ owner: userId})
+      .populate('category', 'name')
+      .populate('subCategory', 'name')
+      .populate('approvedBy', 'name email');
 
-    if (!myBuss) {
+    if (!myBuss || myBuss.length === 0) {
       return res
         .status(404)
         .json(errorResponse(404, "Business not found for this user"));
@@ -334,6 +389,174 @@ module.exports.addLeadToBusiness = async (req, res) => {
     res.status(200).json(successResponse(200, "Lead added successfully", business));
   } catch (error) {
     res.status(500).json(errorResponse(500, "Failed to add lead", error.message));
+  }
+};
+
+// Admin function to approve business
+module.exports.approveBusiness = async (req, res) => {
+  try {
+    const businessId = req.params.id;
+    const adminId = req.userId; // From authentication middleware
+
+    const business = await BussinessModel.findById(businessId);
+    if (!business) {
+      return res.status(404).json(errorResponse(404, "Business not found"));
+    }
+
+    if (business.approvalStatus !== 'pending') {
+      return res.status(400).json(errorResponse(400, "Business is not pending approval"));
+    }
+
+    // Update business status
+    business.approvalStatus = 'approved';
+    business.approvedBy = adminId;
+    business.approvedAt = new Date();
+    business.isActive = true;
+    business.status = 'active';
+    await business.save();
+
+    // Create notification for business owner
+    const ownerNotification = new NotificationModel({
+      title: 'Business Approved',
+      message: `Your business "${business.name}" has been approved and is now active.`,
+      type: 'business_approval',
+      recipient: business.owner,
+      sender: adminId,
+      business: businessId,
+      data: {
+        businessId: businessId,
+        businessName: business.name,
+        approvedBy: adminId
+      }
+    });
+    await ownerNotification.save();
+
+    // Send push notification to business owner
+    const owner = await UserModel.findById(business.owner);
+    if (owner && owner.subscription && owner.subscription.endpoint) {
+      const payload = {
+        title: 'Business Approved',
+        body: `Your business "${business.name}" has been approved and is now active.`,
+        icon: '/icon-192x192.png',
+        badge: '/badge-72x72.png',
+        data: {
+          businessId: businessId,
+          type: 'business_approved'
+        }
+      };
+      
+      await sendPushNotification(owner.subscription, payload);
+    }
+
+    res.status(200).json(successResponse(200, "Business approved successfully", business));
+  } catch (error) {
+    res.status(500).json(errorResponse(500, "Failed to approve business", error.message));
+  }
+};
+
+// Admin function to reject business
+module.exports.rejectBusiness = async (req, res) => {
+  try {
+    const businessId = req.params.id;
+    const adminId = req.userId;  // still works
+    // but also you can check role
+    if (req.userRole !== "admin") {
+      return res.status(403).json(errorResponse(403, "Forbidden - Admin access required"));
+    }
+        const { rejectionReason } = req.body;
+
+    if (!rejectionReason) {
+      return res.status(400).json(errorResponse(400, "Rejection reason is required"));
+    }
+
+    const business = await BussinessModel.findById(businessId);
+    if (!business) {
+      return res.status(404).json(errorResponse(404, "Business not found"));
+    }
+
+    if (business.approvalStatus !== 'pending') {
+      return res.status(400).json(errorResponse(400, "Business is not pending approval"));
+    }
+
+    // Update business status
+    business.approvalStatus = 'rejected';
+    business.approvedBy = adminId;
+    business.approvedAt = new Date();
+    business.rejectionReason = rejectionReason;
+    business.isActive = false;
+    business.status = 'inactive';
+    await business.save();
+
+    // Create notification for business owner
+    const ownerNotification = new NotificationModel({
+      title: 'Business Rejected',
+      message: `Your business "${business.name}" has been rejected. Reason: ${rejectionReason}`,
+      type: 'business_rejection',
+      recipient: business.owner,
+      sender: adminId,
+      business: businessId,
+      data: {
+        businessId: businessId,
+        businessName: business.name,
+        rejectionReason: rejectionReason,
+        rejectedBy: adminId
+      }
+    });
+    await ownerNotification.save();
+
+    // Send push notification to business owner
+    const owner = await UserModel.findById(business.owner);
+    if (owner && owner.subscription && owner.subscription.endpoint) {
+      const payload = {
+        title: 'Business Rejected',
+        body: `Your business "${business.name}" has been rejected. Reason: ${rejectionReason}`,
+        icon: '/icon-192x192.png',
+        badge: '/badge-72x72.png',
+        data: {
+          businessId: businessId,
+          type: 'business_rejected'
+        }
+      };
+      
+      await sendPushNotification(owner.subscription, payload);
+    }
+
+    res.status(200).json(successResponse(200, "Business rejected successfully", business));
+  } catch (error) {
+    res.status(500).json(errorResponse(500, "Failed to reject business", error.message));
+  }
+};
+
+// Get pending businesses for admin
+module.exports.getPendingBusinesses = async (req, res) => {
+  try {
+    const pendingBusinesses = await BussinessModel.find({ approvalStatus: 'pending' })
+      .populate('owner', 'name email phone')
+      .populate('category', 'name')
+      .populate('subCategory', 'name')
+      .sort({ submittedAt: -1 });
+
+    res.status(200).json(successResponse(200, "Pending businesses fetched", pendingBusinesses));
+  } catch (error) {
+    res.status(500).json(errorResponse(500, "Failed to fetch pending businesses", error.message));
+  }
+};
+
+// Get business approval history
+module.exports.getBusinessApprovalHistory = async (req, res) => {
+  try {
+    const businesses = await BussinessModel.find({ 
+      approvalStatus: { $in: ['approved', 'rejected'] } 
+    })
+      .populate('owner', 'name email phone')
+      .populate('approvedBy', 'name email')
+      .populate('category', 'name')
+      .populate('subCategory', 'name')
+      .sort({ approvedAt: -1 });
+
+    res.status(200).json(successResponse(200, "Business approval history fetched", businesses));
+  } catch (error) {
+    res.status(500).json(errorResponse(500, "Failed to fetch approval history", error.message));
   }
 };
 

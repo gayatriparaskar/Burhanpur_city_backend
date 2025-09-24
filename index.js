@@ -22,6 +22,7 @@ const BookingRouter = require('./src/routes/BookingRouter'); // Booking routes
 const saveSubscriptionRoute = require('./src/routes/saveSubscription'); // Push notification subscription
 const conversationRoutes = require('./src/routes/ConversationRouter'); // Conversation routes
 const messageRoutes = require('./src/routes/MessageRouter'); // Message routes
+const notificationRoutes = require('./src/routes/NotificationRouter'); // Notification routes
 
 
 
@@ -57,6 +58,7 @@ app.use("/api/bookings",BookingRouter); // Booking routes
 app.use('/api/save-subscription', saveSubscriptionRoute); // Push notification subscription
 app.use('/api/conversations', conversationRoutes); // Conversation routes
 app.use('/api/messages', messageRoutes); // Message routes
+app.use('/api/notifications', notificationRoutes); // Notification routes
 
 
 // Error handling middleware

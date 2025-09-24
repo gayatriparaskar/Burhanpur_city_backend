@@ -21,13 +21,17 @@ const authentication = async (req, res, next) => {
     console.log("Decoded token:", decoded);  // 🔍 Log to inspect structure
 
     const userId = decoded.userId || decoded.id || decoded._id || decoded.sub;
+    const role = decoded.role || "user"; // default fallback
     if (!userId) {
       return res
         .status(400)
         .json(errorResponse(400, "Token payload missing user ID"));
     }
 
-    req.userId = userId;
+       // Attach to req
+       req.userId = userId;
+       req.userRole = role;
+       req.user = decoded; // keep full payload for flexibility
     next();
   } catch (error) {
     console.log("secret key ",process.env.JWT_SECRET);
