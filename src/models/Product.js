@@ -15,7 +15,23 @@ const productSchema = new mongoose.Schema({
     keyWord:[String],
     rating:{type:Number},
     review:{type:String},
-    createdAt:{type:Date,default:Date.now}
+    createdAt:{type:Date,default:Date.now},
+    // Product approval system
+    approvalStatus: { 
+        type: String, 
+        enum: ['pending', 'approved', 'rejected'], 
+        default: 'pending' 
+    },
+    approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    approvedAt: { type: Date },
+    rejectionReason: { type: String },
+    submittedAt: { type: Date, default: Date.now },
+    isActive: { type: Boolean, default: false }, // Product is inactive until approved
+    status: { 
+        type: String, 
+        enum: ['active', 'inactive', 'blocked'], 
+        default: 'inactive' 
+    }
 })
  
 const ProductModel =  mongoose.model("Products",productSchema);

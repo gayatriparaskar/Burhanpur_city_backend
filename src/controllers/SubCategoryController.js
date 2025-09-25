@@ -114,7 +114,15 @@ module.exports.getSubCategoryOne = async (req, res) => {
       return res.status(404).json(errorResponse(404, "Subcategory not found"));
     }
 
-    const businesses = await BussinessModel.find({ subCategory: id });
+    // Only show approved and active businesses in subcategory
+    const businesses = await BussinessModel.find({ 
+      subCategory: id,
+      approvalStatus: 'approved',
+      isActive: true,
+      status: 'active'
+    })
+    .populate('owner', 'name email phone')
+    .populate('category', 'name');
 
     res.status(200).json(successResponse(
       200,

@@ -125,10 +125,15 @@ module.exports.searchAll = async (req, res) => {
   if (!type || type === "category") {
     searches.push(
       CategoryModel.find({
-        $or: [
-          { name: regex },
-          { description: regex },
-          { type: regex }
+        $and: [
+          {
+            $or: [
+              { name: regex },
+              { description: regex },
+              { type: regex }
+            ]
+          },
+          { isActive: true }
         ]
       }).then(data => results.categories = data)
     );
@@ -137,10 +142,15 @@ module.exports.searchAll = async (req, res) => {
   if (!type || type === "subcategory") {
     searches.push(
       SubcategoryModel.find({
-        $or: [
-          { name: regex },
-          { title: regex },
-          { description: regex }
+        $and: [
+          {
+            $or: [
+              { name: regex },
+              { title: regex },
+              { description: regex }
+            ]
+          },
+          { isActive: true }
         ]
       }).then(data => results.subcategories = data)
     );
@@ -149,15 +159,24 @@ module.exports.searchAll = async (req, res) => {
   if (!type || type === "business") {
     searches.push(
       BusinessModel.find({
-        $or: [
-          { name: regex },
-          { description: regex },
-          { "address.city": regex },
-          { "address.state": regex },
-          { specility: regex },
-          { block: regex },
-          { features: regex },
-          { keyWords: regex }
+        $and: [
+          {
+            $or: [
+              { name: regex },
+              { description: regex },
+              { "address.city": regex },
+              { "address.state": regex },
+              { specility: regex },
+              { block: regex },
+              { features: regex },
+              { keyWords: regex }
+            ]
+          },
+          {
+            approvalStatus: 'approved',
+            isActive: true,
+            status: 'active'
+          }
         ]
       }).then(data => results.businesses = data)
     );
@@ -166,14 +185,23 @@ module.exports.searchAll = async (req, res) => {
   if (!type || type === "product") {
     searches.push(
       ProductModel.find({
-        $or: [
-          { name: regex },
-          { description: regex },
-          { brand: regex },
-          { feature: regex },
-          { speciality: regex },
-          { keyWord: regex },
-          { review: regex }
+        $and: [
+          {
+            $or: [
+              { name: regex },
+              { description: regex },
+              { brand: regex },
+              { feature: regex },
+              { speciality: regex },
+              { keyWord: regex },
+              { review: regex }
+            ]
+          },
+          {
+            approvalStatus: 'approved',
+            isActive: true,
+            status: 'active'
+          }
         ]
       }).then(data => results.products = data)
     );

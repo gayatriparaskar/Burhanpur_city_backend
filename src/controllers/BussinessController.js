@@ -248,7 +248,12 @@ module.exports.getMyBuss = async (req, res) => {
 
 module.exports.searchBuss = async (req, res) => {
   const { query, isActive } = req.query;
-  const filter = {};
+  const filter = {
+    // Only show approved and active businesses in search
+    approvalStatus: 'approved',
+    isActive: true,
+    status: 'active'
+  };
 
   if (query) {
     filter.$or = [
@@ -264,7 +269,10 @@ module.exports.searchBuss = async (req, res) => {
   }
 
   try {
-    const business = await BussinessModel.find(filter);
+    const business = await BussinessModel.find(filter)
+      .populate('category', 'name')
+      .populate('subCategory', 'name')
+      .populate('owner', 'name email phone');
 
     if (business.length === 0) {
       return res
