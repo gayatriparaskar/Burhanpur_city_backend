@@ -183,27 +183,129 @@ module.exports.getBussinessById = async (req, res) => {
 module.exports.updateBussiness = async (req, res) => {
   try {
     const id = req.params.id;
-    const query = req.body;
+    const updateData = req.body;
+    const userId = req.userId; // From authentication middleware
+    const userRole = req.userRole; // From authentication middleware
     
-    // Check if status is being updated and validate it
-    if (query.status && !['active', 'inactive', 'blocked'].includes(query.status)) {
-      return res.status(400).json(errorResponse(400, 'Invalid status. Must be active, inactive, or blocked'));
-    }
-    
-    const updatedBuss = await BussinessModel.findByIdAndUpdate(id, query, {
-      new: true,
-      runValidators: true,
-    });
-    
-    if (!updatedBuss) {
+    // Get the business first to check ownership
+    const business = await BussinessModel.findById(id);
+    if (!business) {
       return res.status(404).json(errorResponse(404, 'Business not found'));
     }
     
-    res
-      .status(200)
-      .json(successResponse(200, "Bussiness is updated", updatedBuss));
+    // Check permissions
+    const isOwner = business.owner.toString() === userId;
+    const isAdmin = userRole === 'admin';
+    
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json(errorResponse(403, 'Access denied. You can only update your own business or need admin privileges.'));
+    }
+    
+    // Define restricted fields based on role
+    const adminOnlyFields = ['approvalStatus', 'approvedBy', 'approvedAt', 'rejectionReason', 'isActive'];
+    const ownerRestrictedFields = ['approvalStatus', 'approvedBy', 'approvedAt', 'rejectionReason'];
+    
+    // Check if owner is trying to update admin-only fields
+    if (isOwner && !isAdmin) {
+      const restrictedFields = Object.keys(updateData).filter(field => ownerRestrictedFields.includes(field));
+      if (restrictedFields.length > 0) {
+        return res.status(403).json(errorResponse(403, `You cannot update these fields: ${restrictedFields.join(', ')}. Admin access required.`));
+      }
+    }
+    
+    // Check if non-admin is trying to update admin-only fields
+    if (!isAdmin) {
+      const adminFields = Object.keys(updateData).filter(field => adminOnlyFields.includes(field));
+      if (adminFields.length > 0) {
+        return res.status(403).json(errorResponse(403, `You cannot update these fields: ${adminFields.join(', ')}. Admin access required.`));
+      }
+    }
+    
+    // Validate status field
+    if (updateData.status && !['active', 'inactive', 'blocked'].includes(updateData.status)) {
+      return res.status(400).json(errorResponse(400, 'Invalid status. Must be active, inactive, or blocked'));
+    }
+    
+    // Admin-specific logic for approval status changes
+    if (isAdmin && updateData.approvalStatus && updateData.approvalStatus !== business.approvalStatus) {
+      updateData.approvedBy = userId;
+      updateData.approvedAt = new Date();
+      
+      // Set related fields based on approval status
+      if (updateData.approvalStatus === 'approved') {
+        updateData.isActive = true;
+        updateData.status = 'active';
+      } else if (updateData.approvalStatus === 'rejected') {
+        updateData.isActive = false;
+        updateData.status = 'inactive';
+      }
+    }
+    
+    // Update the business
+    const updatedBusiness = await BussinessModel.findByIdAndUpdate(id, updateData, {
+      new: true,
+      runValidators: true,
+    }).populate('owner', 'name email phone')
+     .populate('category', 'name')
+     .populate('subCategory', 'name')
+     .populate('approvedBy', 'name email');
+    
+    // Send notification to business owner if admin changed approval status
+    if (isAdmin && updateData.approvalStatus && updateData.approvalStatus !== business.approvalStatus) {
+      const owner = await UserModel.findById(business.owner);
+      
+      let notificationTitle, notificationMessage, pushTitle, pushBody;
+      
+      if (updateData.approvalStatus === 'approved') {
+        notificationTitle = 'Business Approved';
+        notificationMessage = `Your business "${business.name}" has been approved and is now active.`;
+        pushTitle = 'Business Approved';
+        pushBody = `Your business "${business.name}" has been approved and is now active.`;
+      } else if (updateData.approvalStatus === 'rejected') {
+        notificationTitle = 'Business Rejected';
+        notificationMessage = `Your business "${business.name}" has been rejected. Reason: ${updateData.rejectionReason || 'No reason provided'}`;
+        pushTitle = 'Business Rejected';
+        pushBody = `Your business "${business.name}" has been rejected. Reason: ${updateData.rejectionReason || 'No reason provided'}`;
+      }
+
+      // Create notification
+      const ownerNotification = new NotificationModel({
+        title: notificationTitle,
+        message: notificationMessage,
+        type: updateData.approvalStatus === 'approved' ? 'business_approval' : 'business_rejection',
+        recipient: business.owner,
+        sender: userId,
+        business: id,
+        data: {
+          businessId: id,
+          businessName: business.name,
+          approvedBy: userId,
+          rejectionReason: updateData.rejectionReason
+        }
+      });
+      await ownerNotification.save();
+
+      // Send push notification
+      if (owner && owner.subscription && owner.subscription.endpoint) {
+        const payload = {
+          title: pushTitle,
+          body: pushBody,
+          icon: '/icon-192x192.png',
+          badge: '/badge-72x72.png',
+          data: {
+            businessId: id,
+            type: updateData.approvalStatus === 'approved' ? 'business_approved' : 'business_rejected'
+          }
+        };
+        
+        await sendPushNotification(owner.subscription, payload);
+      }
+    }
+    
+    const message = isAdmin ? "Business updated successfully by admin" : "Business updated successfully";
+    res.status(200).json(successResponse(200, message, updatedBusiness));
   } catch (error) {
-    res.status(500).json(errorResponse(500, "Invalid Credentials"));
+    res.status(500).json(errorResponse(500, "Failed to update business", error.message));
   }
 };
 
@@ -584,6 +686,105 @@ module.exports.getAllBussiness = async (req, res) => {
         error: error.message
     });
 }
+};
+
+// Admin function to update entire business (including approval fields)
+module.exports.adminUpdateBusiness = async (req, res) => {
+  try {
+    const businessId = req.params.id;
+    const updateData = req.body;
+    const adminId = req.userId; // From authentication middleware
+
+    // Validate business exists
+    const business = await BussinessModel.findById(businessId);
+    if (!business) {
+      return res.status(404).json(errorResponse(404, "Business not found"));
+    }
+
+    // If approval status is being changed, add audit trail
+    if (updateData.approvalStatus && updateData.approvalStatus !== business.approvalStatus) {
+      updateData.approvedBy = adminId;
+      updateData.approvedAt = new Date();
+      
+      // Set related fields based on approval status
+      if (updateData.approvalStatus === 'approved') {
+        updateData.isActive = true;
+        updateData.status = 'active';
+      } else if (updateData.approvalStatus === 'rejected') {
+        updateData.isActive = false;
+        updateData.status = 'inactive';
+      }
+    }
+
+    // Update the business
+    const updatedBusiness = await BussinessModel.findByIdAndUpdate(
+      businessId, 
+      updateData, 
+      { 
+        new: true, 
+        runValidators: true 
+      }
+    ).populate('owner', 'name email phone')
+     .populate('category', 'name')
+     .populate('subCategory', 'name')
+     .populate('approvedBy', 'name email');
+
+    // Send notification to business owner if approval status changed
+    if (updateData.approvalStatus && updateData.approvalStatus !== business.approvalStatus) {
+      const owner = await UserModel.findById(business.owner);
+      
+      let notificationTitle, notificationMessage, pushTitle, pushBody;
+      
+      if (updateData.approvalStatus === 'approved') {
+        notificationTitle = 'Business Approved';
+        notificationMessage = `Your business "${business.name}" has been approved and is now active.`;
+        pushTitle = 'Business Approved';
+        pushBody = `Your business "${business.name}" has been approved and is now active.`;
+      } else if (updateData.approvalStatus === 'rejected') {
+        notificationTitle = 'Business Rejected';
+        notificationMessage = `Your business "${business.name}" has been rejected. Reason: ${updateData.rejectionReason || 'No reason provided'}`;
+        pushTitle = 'Business Rejected';
+        pushBody = `Your business "${business.name}" has been rejected. Reason: ${updateData.rejectionReason || 'No reason provided'}`;
+      }
+
+      // Create notification
+      const ownerNotification = new NotificationModel({
+        title: notificationTitle,
+        message: notificationMessage,
+        type: updateData.approvalStatus === 'approved' ? 'business_approval' : 'business_rejection',
+        recipient: business.owner,
+        sender: adminId,
+        business: businessId,
+        data: {
+          businessId: businessId,
+          businessName: business.name,
+          approvedBy: adminId,
+          rejectionReason: updateData.rejectionReason
+        }
+      });
+      await ownerNotification.save();
+
+      // Send push notification
+      if (owner && owner.subscription && owner.subscription.endpoint) {
+        const payload = {
+          title: pushTitle,
+          body: pushBody,
+          icon: '/icon-192x192.png',
+          badge: '/badge-72x72.png',
+          data: {
+            businessId: businessId,
+            type: updateData.approvalStatus === 'approved' ? 'business_approved' : 'business_rejected'
+          }
+        };
+        
+        await sendPushNotification(owner.subscription, payload);
+      }
+    }
+
+    res.status(200).json(successResponse(200, "Business updated successfully by admin", updatedBusiness));
+  } catch (error) {
+    res.status(500).json(errorResponse(500, "Failed to update business", error.message));
+  }
 };
 
 

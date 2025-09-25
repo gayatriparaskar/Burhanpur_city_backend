@@ -90,20 +90,135 @@ exports.getProductById = async (req, res) => {
   }
 };
 
-// Update product by ID
+// Unified product update function for both owner and admin
 exports.updateProduct = async (req, res) => {
   try {
-    const updatedProduct = await ProductModel.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    );
-    if (!updatedProduct) {
-      return res.status(404).json(errorResponse(404, "Product not found"));
+    const productId = req.params.id;
+    const updateData = req.body;
+    const userId = req.userId; // From authentication middleware
+    const userRole = req.userRole; // From authentication middleware
+    
+    // Get the product first to check ownership through business
+    const product = await ProductModel.findById(productId).populate('bussinessId', 'owner');
+    if (!product) {
+      return res.status(404).json(errorResponse(404, 'Product not found'));
     }
-    res.status(200).json(successResponse(200, "Product updated successfully", updatedProduct));
+    
+    // Check permissions - owner through business or admin
+    const isOwner = product.bussinessId && product.bussinessId.owner.toString() === userId;
+    const isAdmin = userRole === 'admin';
+    
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json(errorResponse(403, 'Access denied. You can only update products from your business or need admin privileges.'));
+    }
+    
+    // Define restricted fields based on role
+    const adminOnlyFields = ['approvalStatus', 'approvedBy', 'approvedAt', 'rejectionReason', 'isActive'];
+    const ownerRestrictedFields = ['approvalStatus', 'approvedBy', 'approvedAt', 'rejectionReason'];
+    
+    // Check if owner is trying to update admin-only fields
+    if (isOwner && !isAdmin) {
+      const restrictedFields = Object.keys(updateData).filter(field => ownerRestrictedFields.includes(field));
+      if (restrictedFields.length > 0) {
+        return res.status(403).json(errorResponse(403, `You cannot update these fields: ${restrictedFields.join(', ')}. Admin access required.`));
+      }
+    }
+    
+    // Check if non-admin is trying to update admin-only fields
+    if (!isAdmin) {
+      const adminFields = Object.keys(updateData).filter(field => adminOnlyFields.includes(field));
+      if (adminFields.length > 0) {
+        return res.status(403).json(errorResponse(403, `You cannot update these fields: ${adminFields.join(', ')}. Admin access required.`));
+      }
+    }
+    
+    // Validate status field
+    if (updateData.status && !['active', 'inactive', 'blocked'].includes(updateData.status)) {
+      return res.status(400).json(errorResponse(400, 'Invalid status. Must be active, inactive, or blocked'));
+    }
+    
+    // Admin-specific logic for approval status changes
+    if (isAdmin && updateData.approvalStatus && updateData.approvalStatus !== product.approvalStatus) {
+      updateData.approvedBy = userId;
+      updateData.approvedAt = new Date();
+      
+      // Set related fields based on approval status
+      if (updateData.approvalStatus === 'approved') {
+        updateData.isActive = true;
+        updateData.status = 'active';
+      } else if (updateData.approvalStatus === 'rejected') {
+        updateData.isActive = false;
+        updateData.status = 'inactive';
+      }
+    }
+    
+    // Update the product
+    const updatedProduct = await ProductModel.findByIdAndUpdate(productId, updateData, {
+      new: true,
+      runValidators: true,
+    }).populate('bussinessId', 'name owner')
+     .populate('approvedBy', 'name email');
+    
+    // Send notification to business owner if admin changed approval status
+    if (isAdmin && updateData.approvalStatus && updateData.approvalStatus !== product.approvalStatus) {
+      const business = await ProductModel.findById(productId).populate('bussinessId');
+      if (business && business.bussinessId) {
+        const owner = await UserModel.findById(business.bussinessId.owner);
+        
+        let notificationTitle, notificationMessage, pushTitle, pushBody;
+        
+        if (updateData.approvalStatus === 'approved') {
+          notificationTitle = 'Product Approved';
+          notificationMessage = `Your product "${product.name}" has been approved and is now active.`;
+          pushTitle = 'Product Approved';
+          pushBody = `Your product "${product.name}" has been approved and is now active.`;
+        } else if (updateData.approvalStatus === 'rejected') {
+          notificationTitle = 'Product Rejected';
+          notificationMessage = `Your product "${product.name}" has been rejected. Reason: ${updateData.rejectionReason || 'No reason provided'}`;
+          pushTitle = 'Product Rejected';
+          pushBody = `Your product "${product.name}" has been rejected. Reason: ${updateData.rejectionReason || 'No reason provided'}`;
+        }
+
+        // Create notification
+        const ownerNotification = new NotificationModel({
+          title: notificationTitle,
+          message: notificationMessage,
+          type: updateData.approvalStatus === 'approved' ? 'product_approval' : 'product_rejection',
+          recipient: business.bussinessId.owner,
+          sender: userId,
+          business: business.bussinessId._id,
+          data: {
+            productId: productId,
+            productName: product.name,
+            businessId: business.bussinessId._id,
+            approvedBy: userId,
+            rejectionReason: updateData.rejectionReason
+          }
+        });
+        await ownerNotification.save();
+
+        // Send push notification
+        if (owner && owner.subscription && owner.subscription.endpoint) {
+          const payload = {
+            title: pushTitle,
+            body: pushBody,
+            icon: '/icon-192x192.png',
+            badge: '/badge-72x72.png',
+            data: {
+              productId: productId,
+              type: updateData.approvalStatus === 'approved' ? 'product_approved' : 'product_rejected'
+            }
+          };
+          
+          await sendPushNotification(owner.subscription, payload);
+        }
+      }
+    }
+    
+    const message = isAdmin ? "Product updated successfully by admin" : "Product updated successfully";
+    res.status(200).json(successResponse(200, message, updatedProduct));
   } catch (error) {
-    res.status(400).json(errorResponse(400, "Failed to update product", error.message));
+    res.status(500).json(errorResponse(500, "Failed to update product", error.message));
   }
 };
 

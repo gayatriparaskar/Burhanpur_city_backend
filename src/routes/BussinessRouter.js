@@ -17,7 +17,8 @@ const {
   rejectBusiness,
   getPendingBusinesses,
   getBusinessApprovalHistory,
-  getAllBussiness
+  getAllBussiness,
+  adminUpdateBusiness
 } = require ("../controllers/BussinessController");
 
 
@@ -26,7 +27,7 @@ const BussinessRouter = express.Router();
 BussinessRouter.post("/registerBuss", createBussiness);
 BussinessRouter.get("/getBuss", getBussiness);
 BussinessRouter.get("/getBussById/:id", getBussinessById);
-BussinessRouter.put("/updateBuss/:id", updateBussiness);
+BussinessRouter.put("/updateBuss/:id", authentication, updateBussiness);
 BussinessRouter.delete("/deleteBuss/:id", deletedBuss);
 BussinessRouter.get("/getMyBuss",authentication, getMyBuss);
 BussinessRouter.get("/searchBuss", searchBuss);
@@ -40,5 +41,6 @@ BussinessRouter.get("/admin/history", authentication, checkRole('admin'), getBus
 BussinessRouter.get("/admin/all", authentication, checkRole('admin'), getAllBussiness);
 BussinessRouter.put("/admin/approve/:id", authentication, checkRole('admin'), approveBusiness);
 BussinessRouter.put("/admin/reject/:id", authentication, checkRole('admin'), rejectBusiness);
+BussinessRouter.put("/admin/update/:id", authentication, checkRole('admin'), adminUpdateBusiness);
 
 module.exports = BussinessRouter;
