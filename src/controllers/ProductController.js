@@ -2,7 +2,7 @@ const ProductModel = require("../models/Product");  // adjust path as per your s
 const { successResponse, errorResponse } = require("../helper/successAndError");
 const UserModel = require("../models/User");
 const NotificationModel = require("../models/Notification");
-const { sendPushNotification } = require("../utils/sendPushNotification");
+const { sendPushNotification, sendBulkPushNotifications } = require("../utils/sendPushNotification");
 
 // Create a new product
 exports.createProduct = async (req, res) => {
@@ -20,38 +20,88 @@ exports.createProduct = async (req, res) => {
     // Find all admin users to send notification
     const adminUsers = await UserModel.find({ role: 'admin' });
     
-    // Create notifications for all admins
-    const notifications = adminUsers.map(admin => ({
-      title: 'New Product Approval Required',
-      message: `A new product "${data.name}" has been submitted and requires approval.`,
-      type: 'business_approval', // Reusing business approval type for products
-      recipient: admin._id,
-      business: data.bussinessId, // Link to business
-      data: {
-        productId: savedProduct._id,
-        productName: data.name,
-        businessId: data.bussinessId
-      }
-    }));
-
-    await NotificationModel.insertMany(notifications);
-
-    // Send push notifications to admins
-    for (const admin of adminUsers) {
-      if (admin.subscription && admin.subscription.endpoint) {
-        const payload = {
+    if (adminUsers.length > 0) {
+      try {
+        // Create notifications for all admins
+        const notifications = adminUsers.map(admin => ({
           title: 'New Product Approval Required',
-          body: `A new product "${data.name}" has been submitted and requires approval.`,
-          icon: '/icon-192x192.png',
-          badge: '/badge-72x72.png',
+          message: `A new product "${data.name}" has been submitted and requires approval.`,
+          type: 'product_submission',
+          recipient: admin._id,
+          business: data.bussinessId, // Link to business
           data: {
             productId: savedProduct._id,
-            type: 'product_approval'
+            productName: data.name,
+            businessId: data.bussinessId
           }
-        };
+        }));
+
+        await NotificationModel.insertMany(notifications);
+        console.log(`✅ Created ${notifications.length} product notifications for admins`);
+
+        // Send real-time push notifications to all admins
+        const adminSubscriptions = adminUsers
+          .filter(admin => admin.subscription && admin.subscription.endpoint)
+          .map(admin => admin.subscription);
         
-        await sendPushNotification(admin.subscription, payload);
+        if (adminSubscriptions.length > 0) {
+          const payload = {
+            title: '🛍️ New Product Approval Required',
+            body: `A new product "${data.name}" has been submitted and requires immediate approval.`,
+            icon: '/icon-192x192.png',
+            badge: '/badge-72x72.png',
+            requireInteraction: true, // Keep notification visible until user interacts
+            actions: [
+              {
+                action: 'approve',
+                title: 'Approve',
+                icon: '/approve-icon.png'
+              },
+              {
+                action: 'reject', 
+                title: 'Reject',
+                icon: '/reject-icon.png'
+              }
+            ],
+            data: {
+              productId: savedProduct._id,
+              productName: data.name,
+              businessId: data.bussinessId,
+              type: 'product_submission',
+              url: `/admin/product/${savedProduct._id}`,
+              timestamp: new Date().toISOString()
+            }
+          };
+          
+          try {
+            console.log(`🚀 Sending real-time push notifications to ${adminSubscriptions.length} admins...`);
+            const pushResults = await sendBulkPushNotifications(adminSubscriptions, payload);
+            
+            const successCount = pushResults.filter(r => r.result.success).length;
+            const failureCount = pushResults.filter(r => !r.result.success).length;
+            
+            console.log(`✅ Real-time push notifications sent: ${successCount} successful, ${failureCount} failed`);
+            
+            // Log individual results
+            pushResults.forEach((result, index) => {
+              if (result.result.success) {
+                console.log(`✅ Admin ${index + 1}: Push notification delivered`);
+              } else {
+                console.error(`❌ Admin ${index + 1}: ${result.result.error}`);
+              }
+            });
+          } catch (bulkPushError) {
+            console.error('❌ Bulk push notification failed:', bulkPushError);
+          }
+        } else {
+          console.log('⚠️ No admin users have push notification subscriptions');
+        }
+      } catch (notificationError) {
+        console.error('❌ Error creating product notifications:', notificationError);
+        // Don't fail the product creation if notifications fail
       }
+    } else {
+      console.log('⚠️ No admin users found to send product notifications to');
     }
 
     res.status(201).json(successResponse(201, "Product submitted for approval", savedProduct));

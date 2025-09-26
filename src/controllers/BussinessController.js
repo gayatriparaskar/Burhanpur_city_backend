@@ -3,7 +3,7 @@ const BussinessModel = require("../models/Business");
 const { errorResponse, successResponse } = require("../helper/successAndError");
 const UserModel = require("../models/User"); // adjust path accordingly
 const NotificationModel = require("../models/Notification");
-const { sendPushNotification } = require("../utils/sendPushNotification");
+const { sendPushNotification, sendBulkPushNotifications } = require("../utils/sendPushNotification");
 
 const SubCategoryModel = require("../models/SubCategory"); // Adjust path as needed
 
@@ -79,39 +79,90 @@ module.exports.createBussiness = async (req, res) => {
 
     // Find all admin users to send notification
     const adminUsers = await UserModel.find({ role: 'admin' });
+    console.log(`🔍 Found ${adminUsers.length} admin users in database`);
     
-    // Create notifications for all admins
-    const notifications = adminUsers.map(admin => ({
-      title: 'New Business Approval Required',
-      message: `A new business "${data.name}" has been submitted and requires approval.`,
-      type: 'business_approval',
-      recipient: admin._id,
-      business: newBusiness._id,
-      data: {
-        businessId: newBusiness._id,
-        businessName: data.name,
-        ownerId: data.owner
-      }
-    }));
-
-    await NotificationModel.insertMany(notifications);
-
-    // Send push notifications to admins
-    for (const admin of adminUsers) {
-      if (admin.subscription && admin.subscription.endpoint) {
-        const payload = {
+    if (adminUsers.length > 0) {
+      try {
+        // Create notifications for all admins
+        const notifications = adminUsers.map(admin => ({
           title: 'New Business Approval Required',
-          body: `A new business "${data.name}" has been submitted and requires approval.`,
-          icon: '/icon-192x192.png',
-          badge: '/badge-72x72.png',
+          message: `A new business "${data.name}" has been submitted and requires approval.`,
+          type: 'business_submission',
+          recipient: admin._id,
+          business: newBusiness._id,
           data: {
             businessId: newBusiness._id,
-            type: 'business_approval'
+            businessName: data.name,
+            ownerId: data.owner
           }
-        };
+        }));
+
+        await NotificationModel.insertMany(notifications);
+        console.log(`✅ Created ${notifications.length} notifications for admins`);
+
+        // Send real-time push notifications to all admins
+        const adminSubscriptions = adminUsers
+          .filter(admin => admin.subscription && admin.subscription.endpoint)
+          .map(admin => admin.subscription);
         
-        await sendPushNotification(admin.subscription, payload);
+        if (adminSubscriptions.length > 0) {
+          const payload = {
+            title: '🚨 New Business Approval Required',
+            body: `A new business "${data.name}" has been submitted and requires immediate approval.`,
+            icon: '/icon-192x192.png',
+            badge: '/badge-72x72.png',
+            requireInteraction: true, // Keep notification visible until user interacts
+            actions: [
+              {
+                action: 'approve',
+                title: 'Approve',
+                icon: '/approve-icon.png'
+              },
+              {
+                action: 'reject', 
+                title: 'Reject',
+                icon: '/reject-icon.png'
+              }
+            ],
+            data: {
+              businessId: newBusiness._id,
+              businessName: data.name,
+              ownerId: data.owner,
+              type: 'business_submission',
+              url: `/admin/business/${newBusiness._id}`,
+              timestamp: new Date().toISOString()
+            }
+          };
+          
+          try {
+            console.log(`🚀 Sending real-time push notifications to ${adminSubscriptions.length} admins...`);
+            const pushResults = await sendBulkPushNotifications(adminSubscriptions, payload);
+            
+            const successCount = pushResults.filter(r => r.result.success).length;
+            const failureCount = pushResults.filter(r => !r.result.success).length;
+            
+            console.log(`✅ Real-time push notifications sent: ${successCount} successful, ${failureCount} failed`);
+            
+            // Log individual results
+            pushResults.forEach((result, index) => {
+              if (result.result.success) {
+                console.log(`✅ Admin ${index + 1}: Push notification delivered`);
+              } else {
+                console.error(`❌ Admin ${index + 1}: ${result.result.error}`);
+              }
+            });
+          } catch (bulkPushError) {
+            console.error('❌ Bulk push notification failed:', bulkPushError);
+          }
+        } else {
+          console.log('⚠️ No admin users have push notification subscriptions');
+        }
+      } catch (notificationError) {
+        console.error('❌ Error creating notifications:', notificationError);
+        // Don't fail the business creation if notifications fail
       }
+    } else {
+      console.log('⚠️ No admin users found to send notifications to');
     }
 
     // Populate references
