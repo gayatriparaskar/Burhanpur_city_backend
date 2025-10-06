@@ -13,6 +13,8 @@ const {
   getBusinessStats,
   getSingleBusinessStats,
   addLeadToBusiness,
+  getAllLeads,
+  getAllLeadsAdmin,
   approveBusiness,
   rejectBusiness,
   getPendingBusinesses,
@@ -34,11 +36,13 @@ BussinessRouter.get("/searchBuss", searchBuss);
 BussinessRouter.get("/analytics", getBusinessStats);
 BussinessRouter.get("/analyticsForOne/:id", getSingleBusinessStats);
 BussinessRouter.post('/add-lead/:id', addLeadToBusiness);
+BussinessRouter.get('/leads/:id', authentication, getAllLeads);
 
 // Admin routes for business approval
 BussinessRouter.get("/admin/pending", authentication, checkRole('admin'), getPendingBusinesses);
 BussinessRouter.get("/admin/history", authentication, checkRole('admin'), getBusinessApprovalHistory);
 BussinessRouter.get("/admin/all", authentication, checkRole('admin'), getAllBussiness);
+BussinessRouter.get("/admin/leads", authentication, checkRole('admin'), getAllLeadsAdmin);
 BussinessRouter.put("/admin/approve/:id", authentication, checkRole('admin'), approveBusiness);
 BussinessRouter.put("/admin/reject/:id", authentication, checkRole('admin'), rejectBusiness);
 BussinessRouter.put("/admin/update/:id", authentication, checkRole('admin'), adminUpdateBusiness);

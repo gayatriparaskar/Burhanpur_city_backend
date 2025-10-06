@@ -838,5 +838,84 @@ module.exports.adminUpdateBusiness = async (req, res) => {
   }
 };
 
+// Get all leads for a specific business
+module.exports.getAllLeads = async (req, res) => {
+  try {
+    const businessId = req.params.id;
+    
+    const business = await BussinessModel.findById(businessId)
+      .select('name lead activeLeads')
+      .populate('lead._id', 'name email phone_number isActive createdAt');
 
+    if (!business) {
+      return res.status(404).json(errorResponse(404, "Business not found"));
+    }
+
+    res.status(200).json(successResponse(200, "Leads retrieved successfully", {
+      businessName: business.name,
+      totalLeads: business.lead.length,
+      activeLeads: business.activeLeads,
+      leads: business.lead
+    }));
+  } catch (error) {
+    res.status(500).json(errorResponse(500, "Failed to retrieve leads", error.message));
+  }
+};
+
+// Get all leads across all businesses (admin only)
+module.exports.getAllLeadsAdmin = async (req, res) => {
+  try {
+    const { page = 1, limit = 50, businessId, search } = req.query;
+    
+    // Build filter for businesses
+    const businessFilter = {};
+    if (businessId) {
+      businessFilter._id = businessId;
+    }
+    
+    // Build search filter for leads
+    let leadFilter = {};
+    if (search) {
+      leadFilter.$or = [
+        { 'lead.name': { $regex: search, $options: 'i' } },
+        { 'lead.email': { $regex: search, $options: 'i' } },
+        { 'lead.phone': { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    const businesses = await BussinessModel.find(businessFilter)
+      .select('name lead activeLeads owner')
+      .populate('owner', 'name email')
+      .populate('lead._id', 'name email phone_number isActive createdAt')
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
+
+    // If search filter is applied, filter the leads
+    let filteredBusinesses = businesses;
+    if (search) {
+      filteredBusinesses = businesses.map(business => ({
+        ...business.toObject(),
+        lead: business.lead.filter(lead => 
+          lead.name.toLowerCase().includes(search.toLowerCase()) ||
+          lead.email.toLowerCase().includes(search.toLowerCase()) ||
+          lead.phone.includes(search)
+        )
+      })).filter(business => business.lead.length > 0);
+    }
+
+    const total = await BussinessModel.countDocuments(businessFilter);
+
+    res.status(200).json(successResponse(200, "All leads retrieved successfully", {
+      businesses: filteredBusinesses,
+      pagination: {
+        totalPages: Math.ceil(total / limit),
+        currentPage: parseInt(page),
+        total,
+        limit: parseInt(limit)
+      }
+    }));
+  } catch (error) {
+    res.status(500).json(errorResponse(500, "Failed to retrieve all leads", error.message));
+  }
+};
 
