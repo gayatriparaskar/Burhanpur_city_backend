@@ -3,6 +3,7 @@ const dotenv = require("dotenv");
 dotenv.config();
 const bcrypt = require("bcrypt");
 const jwt = require ("jsonwebtoken");
+const crypto = require("crypto");
 const {
     errorResponse,
     successResponse,
@@ -259,5 +260,151 @@ module.exports.getUsersByRole = async (req, res) => {
     res.status(500).json(
       errorResponse(500, "Failed to fetch users by role", error.message)
     );
+  }
+};
+
+// Change password (for authenticated users)
+module.exports.changePassword = async (req, res) => {
+  try {
+    const userId = req.userId; // From authentication middleware
+    const { currentPassword, newPassword } = req.body;
+
+    // Validate input
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json(errorResponse(400, "Current password and new password are required"));
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json(errorResponse(400, "New password must be at least 6 characters long"));
+    }
+
+    // Get user
+    const user = await UserModel.findById(userId);
+    if (!user) {
+      return res.status(404).json(errorResponse(404, "User not found"));
+    }
+
+    // Verify current password
+    const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password);
+    if (!isCurrentPasswordValid) {
+      return res.status(400).json(errorResponse(400, "Current password is incorrect"));
+    }
+
+    // Hash new password
+    const hashedNewPassword = await bcrypt.hash(newPassword, SALT_ROUNDS);
+
+    // Update password
+    user.password = hashedNewPassword;
+    await user.save();
+
+    res.status(200).json(successResponse(200, "Password changed successfully"));
+  } catch (error) {
+    console.error("Change password error:", error);
+    res.status(500).json(errorResponse(500, "Failed to change password", error.message));
+  }
+};
+
+// Forgot password (send reset token)
+module.exports.forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json(errorResponse(400, "Email is required"));
+    }
+
+    // Find user by email
+    const user = await UserModel.findOne({ email });
+    if (!user) {
+      return res.status(404).json(errorResponse(404, "User not found with this email"));
+    }
+
+    // Generate reset token
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const resetTokenExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    // Save reset token to user
+    user.resetPasswordToken = resetToken;
+    user.resetPasswordExpires = resetTokenExpires;
+    await user.save();
+
+    // In a real application, you would send this token via email
+    // For now, we'll return it in the response (remove this in production)
+    res.status(200).json(successResponse(200, "Password reset token generated", {
+      resetToken: resetToken, // Remove this in production
+      expiresAt: resetTokenExpires,
+      message: "Password reset token has been generated. Please check your email for reset instructions."
+    }));
+  } catch (error) {
+    console.error("Forgot password error:", error);
+    res.status(500).json(errorResponse(500, "Failed to process forgot password request", error.message));
+  }
+};
+
+// Reset password (using reset token)
+module.exports.resetPassword = async (req, res) => {
+  try {
+    const { resetToken, newPassword } = req.body;
+
+    if (!resetToken || !newPassword) {
+      return res.status(400).json(errorResponse(400, "Reset token and new password are required"));
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json(errorResponse(400, "New password must be at least 6 characters long"));
+    }
+
+    // Find user with valid reset token
+    const user = await UserModel.findOne({
+      resetPasswordToken: resetToken,
+      resetPasswordExpires: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.status(400).json(errorResponse(400, "Invalid or expired reset token"));
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, SALT_ROUNDS);
+
+    // Update password and clear reset token
+    user.password = hashedPassword;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+    await user.save();
+
+    res.status(200).json(successResponse(200, "Password reset successfully"));
+  } catch (error) {
+    console.error("Reset password error:", error);
+    res.status(500).json(errorResponse(500, "Failed to reset password", error.message));
+  }
+};
+
+// Verify reset token
+module.exports.verifyResetToken = async (req, res) => {
+  try {
+    const { resetToken } = req.body;
+
+    if (!resetToken) {
+      return res.status(400).json(errorResponse(400, "Reset token is required"));
+    }
+
+    // Find user with valid reset token
+    const user = await UserModel.findOne({
+      resetPasswordToken: resetToken,
+      resetPasswordExpires: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.status(400).json(errorResponse(400, "Invalid or expired reset token"));
+    }
+
+    res.status(200).json(successResponse(200, "Reset token is valid", {
+      email: user.email,
+      expiresAt: user.resetPasswordExpires
+    }));
+  } catch (error) {
+    console.error("Verify reset token error:", error);
+    res.status(500).json(errorResponse(500, "Failed to verify reset token", error.message));
   }
 };

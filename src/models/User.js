@@ -45,7 +45,10 @@ planName: { type: String },
       p256dh: { type: String },
       auth: { type: String }
     }
-  }
+  },
+  // Password reset fields
+  resetPasswordToken: { type: String },
+  resetPasswordExpires: { type: Date }
 });
 
 const UserModel = mongoose.model('User', userSchema);
