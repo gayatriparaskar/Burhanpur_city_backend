@@ -513,10 +513,10 @@ module.exports.getSingleBusinessStats = async (req, res) => {
 module.exports.addLeadToBusiness = async (req, res) => {
   try {
     const businessId = req.params.id;
-    const { userId } = req.body;
+    const { userId, message } = req.body;
 
     // Get full user data
-    const user = await UserModel.findById(userId).select("name email phone_number isActive");
+    const user = await UserModel.findById(userId).select("name email phone isActive");
 
     if (!user) {
       return res.status(404).json(errorResponse(404, "User not found"));
@@ -533,6 +533,7 @@ module.exports.addLeadToBusiness = async (req, res) => {
             email: user.email,
             phone: user.phone,
             isActive: user.isActive,
+            message: message || "" // Add message field
           }
         }
       },
@@ -842,6 +843,7 @@ module.exports.adminUpdateBusiness = async (req, res) => {
 module.exports.getAllLeads = async (req, res) => {
   try {
     const businessId = req.params.id;
+    const { leadId, messagesOnly } = req.query;
     
     const business = await BussinessModel.findById(businessId)
       .select('name lead activeLeads')
@@ -851,11 +853,27 @@ module.exports.getAllLeads = async (req, res) => {
       return res.status(404).json(errorResponse(404, "Business not found"));
     }
 
+    let leads = business.lead;
+    
+    // Filter by specific lead if leadId is provided
+    if (leadId) {
+      leads = leads.filter(lead => lead._id.toString() === leadId);
+      if (leads.length === 0) {
+        return res.status(404).json(errorResponse(404, "Lead not found"));
+      }
+    }
+
+    // Filter leads that have messages if messagesOnly is true
+    if (messagesOnly === 'true') {
+      leads = leads.filter(lead => lead.message && lead.message.trim() !== '');
+    }
+
     res.status(200).json(successResponse(200, "Leads retrieved successfully", {
       businessName: business.name,
       totalLeads: business.lead.length,
       activeLeads: business.activeLeads,
-      leads: business.lead
+      leadsWithMessages: business.lead.filter(lead => lead.message && lead.message.trim() !== '').length,
+      leads: leads
     }));
   } catch (error) {
     res.status(500).json(errorResponse(500, "Failed to retrieve leads", error.message));
@@ -879,7 +897,8 @@ module.exports.getAllLeadsAdmin = async (req, res) => {
       leadFilter.$or = [
         { 'lead.name': { $regex: search, $options: 'i' } },
         { 'lead.email': { $regex: search, $options: 'i' } },
-        { 'lead.phone': { $regex: search, $options: 'i' } }
+        { 'lead.phone': { $regex: search, $options: 'i' } },
+        { 'lead.message': { $regex: search, $options: 'i' } }
       ];
     }
 
@@ -898,7 +917,8 @@ module.exports.getAllLeadsAdmin = async (req, res) => {
         lead: business.lead.filter(lead => 
           lead.name.toLowerCase().includes(search.toLowerCase()) ||
           lead.email.toLowerCase().includes(search.toLowerCase()) ||
-          lead.phone.includes(search)
+          lead.phone.includes(search) ||
+          (lead.message && lead.message.toLowerCase().includes(search.toLowerCase()))
         )
       })).filter(business => business.lead.length > 0);
     }
@@ -918,4 +938,39 @@ module.exports.getAllLeadsAdmin = async (req, res) => {
     res.status(500).json(errorResponse(500, "Failed to retrieve all leads", error.message));
   }
 };
+
+// Update lead message
+module.exports.updateLeadMessage = async (req, res) => {
+  try {
+    const businessId = req.params.businessId;
+    const leadId = req.params.leadId;
+    const { message } = req.body;
+
+    if (!message) {
+      return res.status(400).json(errorResponse(400, "Message is required"));
+    }
+
+    const business = await BussinessModel.findById(businessId);
+    if (!business) {
+      return res.status(404).json(errorResponse(404, "Business not found"));
+    }
+
+    // Find the lead in the business
+    const leadIndex = business.lead.findIndex(lead => lead._id.toString() === leadId);
+    if (leadIndex === -1) {
+      return res.status(404).json(errorResponse(404, "Lead not found in this business"));
+    }
+
+    // Update the message
+    business.lead[leadIndex].message = message;
+    await business.save();
+
+    res.status(200).json(successResponse(200, "Lead message updated successfully", {
+      lead: business.lead[leadIndex]
+    }));
+  } catch (error) {
+    res.status(500).json(errorResponse(500, "Failed to update lead message", error.message));
+  }
+};
+
 

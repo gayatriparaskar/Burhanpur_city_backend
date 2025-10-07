@@ -39,7 +39,8 @@ const businessSchema = new mongoose.Schema({
     name: String,
     email: String,
     phone_number: String,
-    isActive: Boolean
+    isActive: Boolean,
+    message: String
   }
 ],
   isVerified: { type: Boolean, default: false },

@@ -15,6 +15,7 @@ const {
   addLeadToBusiness,
   getAllLeads,
   getAllLeadsAdmin,
+  updateLeadMessage,
   approveBusiness,
   rejectBusiness,
   getPendingBusinesses,
@@ -37,6 +38,7 @@ BussinessRouter.get("/analytics", getBusinessStats);
 BussinessRouter.get("/analyticsForOne/:id", getSingleBusinessStats);
 BussinessRouter.post('/add-lead/:id', addLeadToBusiness);
 BussinessRouter.get('/leads/:id', authentication, getAllLeads);
+BussinessRouter.put('/leads/:businessId/:leadId/message', authentication, updateLeadMessage);
 
 // Admin routes for business approval
 BussinessRouter.get("/admin/pending", authentication, checkRole('admin'), getPendingBusinesses);
