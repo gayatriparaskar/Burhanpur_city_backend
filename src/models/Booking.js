@@ -7,7 +7,7 @@ const bookingSchema = new mongoose.Schema({
   product_id: { type: mongoose.Schema.Types.ObjectId, ref: "Products", required: true }, // Product ID
   type: { 
     type: String, 
-    enum: ["Management & Service", "Product-based service"], 
+    enum: ["Management & Service", "Product-based service","appointment","service","book"], 
     required: true 
   }, // Kis type ki booking hai
 
