@@ -2,6 +2,7 @@ const express = require("express");
 const productrouter = express.Router();
 const authentication = require("../middleware/authentication");
 const { checkRole } = require("../middleware/authorization");
+const { uploadProductImages, handleUploadError } = require("../middleware/upload");
 const {
   createProduct,
   getAllProducts,
@@ -11,11 +12,14 @@ const {
   approveProduct,
   rejectProduct,
   getPendingProducts,
-  getAllProductsForAdmin
+  getAllProductsForAdmin,
+  uploadProductImages: uploadProductImagesController,
+  getProductsByBusiness,
+  getMyBusinessProducts
 } = require("../controllers/ProductController");
 
 // Create product
-productrouter.post("/createproduct", createProduct);
+productrouter.post("/createproduct", uploadProductImages, handleUploadError, createProduct);
 
 // Get all products (only approved)
 productrouter.get("/productDetails", getAllProducts);
@@ -24,10 +28,19 @@ productrouter.get("/productDetails", getAllProducts);
 productrouter.get("/ProductDetails/:id", getProductById);
 
 // Update product by ID (unified for owner and admin)
-productrouter.put("/updateProduct/:id", authentication, updateProduct);
+productrouter.put("/updateProduct/:id", authentication, uploadProductImages, handleUploadError, updateProduct);
 
 // Delete product by ID
 productrouter.delete("/deleteProduct/:id", deleteProduct);
+
+// Upload product images
+productrouter.post("/upload-images/:id", authentication, uploadProductImages, handleUploadError, uploadProductImagesController);
+
+// Get products by business ID (public - only approved products)
+productrouter.get("/business/:businessId", getProductsByBusiness);
+
+// Get products by business ID (for business owner - includes all products)
+productrouter.get("/my-business/:businessId", authentication, getMyBusinessProducts);
 
 // Admin routes for product approval
 productrouter.get("/admin/pending", authentication, checkRole('admin'), getPendingProducts);

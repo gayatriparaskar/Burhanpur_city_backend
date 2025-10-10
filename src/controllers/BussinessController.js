@@ -4,6 +4,7 @@ const { errorResponse, successResponse } = require("../helper/successAndError");
 const UserModel = require("../models/User"); // adjust path accordingly
 const NotificationModel = require("../models/Notification");
 const { sendPushNotification, sendBulkPushNotifications } = require("../utils/sendPushNotification");
+const { uploadBusinessImage, handleUploadError, deleteOldImage, getRelativePath } = require("../middleware/upload");
 
 const SubCategoryModel = require("../models/SubCategory"); // Adjust path as needed
 
@@ -11,8 +12,25 @@ module.exports.createBussiness = async (req, res) => {
   try {
     const data = req.body;
 
+    // Debug logging to help identify the issue
+    console.log('Request body:', data);
+    console.log('Request files:', req.file);
+
+    // Handle image upload
+    if (req.file) {
+      data.images = getRelativePath(req.file.path);
+    }
+
+    // Validate required fields first
+    if (!data.name || typeof data.name !== 'string') {
+      return res.status(400).json(errorResponse(400, "Business name is required and must be a string"));
+    }
+
     // Trim business name
     const name = data.name.trim();
+    if (!name) {
+      return res.status(400).json(errorResponse(400, "Business name cannot be empty"));
+    }
     data.name = name;
 
     // Validate category presence
@@ -237,6 +255,17 @@ module.exports.updateBussiness = async (req, res) => {
     const updateData = req.body;
     const userId = req.userId; // From authentication middleware
     const userRole = req.userRole; // From authentication middleware
+
+    // Handle image upload
+    if (req.file) {
+      // Get the current business to check for existing image
+      const currentBusiness = await BussinessModel.findById(id);
+      if (currentBusiness && currentBusiness.images) {
+        // Delete old image file
+        deleteOldImage(currentBusiness.images);
+      }
+      updateData.images = getRelativePath(req.file.path);
+    }
     
     // Get the business first to check ownership
     const business = await BussinessModel.findById(id);
@@ -747,6 +776,17 @@ module.exports.adminUpdateBusiness = async (req, res) => {
     const updateData = req.body;
     const adminId = req.userId; // From authentication middleware
 
+    // Handle image upload
+    if (req.file) {
+      // Get the current business to check for existing image
+      const currentBusiness = await BussinessModel.findById(businessId);
+      if (currentBusiness && currentBusiness.images) {
+        // Delete old image file
+        deleteOldImage(currentBusiness.images);
+      }
+      updateData.images = getRelativePath(req.file.path);
+    }
+
     // Validate business exists
     const business = await BussinessModel.findById(businessId);
     if (!business) {
@@ -970,6 +1010,67 @@ module.exports.updateLeadMessage = async (req, res) => {
     }));
   } catch (error) {
     res.status(500).json(errorResponse(500, "Failed to update lead message", error.message));
+  }
+};
+
+// Upload business image
+module.exports.uploadBusinessImage = async (req, res) => {
+  try {
+    const businessId = req.params.id;
+    const userId = req.userId;
+    const userRole = req.userRole;
+
+    if (!req.file) {
+      return res.status(400).json(errorResponse(400, "No image file provided"));
+    }
+
+    // Get the business
+    const business = await BussinessModel.findById(businessId);
+    if (!business) {
+      return res.status(404).json(errorResponse(404, "Business not found"));
+    }
+
+    // Check permissions
+    const isOwner = business.owner.toString() === userId;
+    const isAdmin = userRole === 'admin';
+    
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json(errorResponse(403, 'Access denied. You can only update your own business or need admin privileges.'));
+    }
+
+    // Delete old image if exists
+    if (business.images) {
+      deleteOldImage(business.images);
+    }
+
+    // Update business with new image
+    business.images = getRelativePath(req.file.path);
+    await business.save();
+
+    res.status(200).json(successResponse(200, "Business image uploaded successfully", {
+      businessId: business._id,
+      imagePath: business.images
+    }));
+  } catch (error) {
+    res.status(500).json(errorResponse(500, "Failed to upload business image", error.message));
+  }
+};
+
+// Debug endpoint to test form data parsing
+module.exports.debugFormData = async (req, res) => {
+  try {
+    res.status(200).json({
+      success: true,
+      message: "Debug information",
+      data: {
+        body: req.body,
+        files: req.file,
+        contentType: req.get('Content-Type'),
+        headers: req.headers
+      }
+    });
+  } catch (error) {
+    res.status(500).json(errorResponse(500, "Debug failed", error.message));
   }
 };
 

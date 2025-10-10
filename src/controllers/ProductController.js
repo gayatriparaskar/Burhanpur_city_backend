@@ -3,11 +3,17 @@ const { successResponse, errorResponse } = require("../helper/successAndError");
 const UserModel = require("../models/User");
 const NotificationModel = require("../models/Notification");
 const { sendPushNotification, sendBulkPushNotifications } = require("../utils/sendPushNotification");
+const { uploadProductImages, handleUploadError, deleteOldImage, getRelativePath } = require("../middleware/upload");
 
 // Create a new product
 exports.createProduct = async (req, res) => {
   try {
     const data = req.body;
+    
+    // Handle image uploads
+    if (req.files && req.files.length > 0) {
+      data.image = req.files.map(file => getRelativePath(file.path));
+    }
     
     // Set approval status to pending for new products
     data.approvalStatus = 'pending';
@@ -140,6 +146,174 @@ exports.getProductById = async (req, res) => {
   }
 };
 
+// Get products by business ID
+exports.getProductsByBusiness = async (req, res) => {
+  try {
+    const businessId = req.params.businessId;
+    const { 
+      page = 1, 
+      limit = 20, 
+      status = 'active',
+      approvalStatus = 'approved',
+      search,
+      sortBy = 'createdAt',
+      sortOrder = 'desc'
+    } = req.query;
+
+    // Validate business ID
+    if (!businessId) {
+      return res.status(400).json(errorResponse(400, "Business ID is required"));
+    }
+
+    // Build filter object
+    const filter = {
+      bussinessId: businessId
+    };
+
+    // Add status filter
+    if (status) {
+      filter.status = status;
+    }
+
+    // Add approval status filter
+    if (approvalStatus) {
+      filter.approvalStatus = approvalStatus;
+    }
+
+    // Add search filter
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+        { brand: { $regex: search, $options: 'i' } },
+        { speciality: { $regex: search, $options: 'i' } },
+        { keyWord: { $elemMatch: { $regex: search, $options: 'i' } } }
+      ];
+    }
+
+    // Build sort object
+    const sort = {};
+    sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
+
+    // Get products with pagination
+    const products = await ProductModel.find(filter)
+      .populate('bussinessId', 'name owner')
+      .populate('approvedBy', 'name email')
+      .sort(sort)
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
+
+    // Get total count for pagination
+    const total = await ProductModel.countDocuments(filter);
+
+    // Get business info
+    const business = await ProductModel.findOne({ bussinessId: businessId })
+      .populate('bussinessId', 'name owner description');
+
+    res.status(200).json(successResponse(200, "Business products retrieved successfully", {
+      products,
+      business: business?.bussinessId || null,
+      pagination: {
+        totalPages: Math.ceil(total / limit),
+        currentPage: parseInt(page),
+        total,
+        limit: parseInt(limit)
+      },
+      filters: {
+        status,
+        approvalStatus,
+        search: search || null
+      }
+    }));
+  } catch (error) {
+    res.status(500).json(errorResponse(500, "Failed to retrieve business products", error.message));
+  }
+};
+
+// Get products by business ID (for business owner - includes all products regardless of approval status)
+exports.getMyBusinessProducts = async (req, res) => {
+  try {
+    const businessId = req.params.businessId;
+    const userId = req.userId; // From authentication middleware
+    const { 
+      page = 1, 
+      limit = 20, 
+      status,
+      approvalStatus,
+      search,
+      sortBy = 'createdAt',
+      sortOrder = 'desc'
+    } = req.query;
+
+    // Validate business ID
+    if (!businessId) {
+      return res.status(400).json(errorResponse(400, "Business ID is required"));
+    }
+
+    // Build filter object
+    const filter = {
+      bussinessId: businessId
+    };
+
+    // Add optional filters
+    if (status) {
+      filter.status = status;
+    }
+
+    if (approvalStatus) {
+      filter.approvalStatus = approvalStatus;
+    }
+
+    // Add search filter
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+        { brand: { $regex: search, $options: 'i' } },
+        { speciality: { $regex: search, $options: 'i' } },
+        { keyWord: { $elemMatch: { $regex: search, $options: 'i' } } }
+      ];
+    }
+
+    // Build sort object
+    const sort = {};
+    sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
+
+    // Get products with pagination
+    const products = await ProductModel.find(filter)
+      .populate('bussinessId', 'name owner')
+      .populate('approvedBy', 'name email')
+      .sort(sort)
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
+
+    // Get total count for pagination
+    const total = await ProductModel.countDocuments(filter);
+
+    // Get business info
+    const business = await ProductModel.findOne({ bussinessId: businessId })
+      .populate('bussinessId', 'name owner description');
+
+    res.status(200).json(successResponse(200, "My business products retrieved successfully", {
+      products,
+      business: business?.bussinessId || null,
+      pagination: {
+        totalPages: Math.ceil(total / limit),
+        currentPage: parseInt(page),
+        total,
+        limit: parseInt(limit)
+      },
+      filters: {
+        status: status || null,
+        approvalStatus: approvalStatus || null,
+        search: search || null
+      }
+    }));
+  } catch (error) {
+    res.status(500).json(errorResponse(500, "Failed to retrieve my business products", error.message));
+  }
+};
+
 // Unified product update function for both owner and admin
 exports.updateProduct = async (req, res) => {
   try {
@@ -147,6 +321,19 @@ exports.updateProduct = async (req, res) => {
     const updateData = req.body;
     const userId = req.userId; // From authentication middleware
     const userRole = req.userRole; // From authentication middleware
+
+    // Handle image uploads
+    if (req.files && req.files.length > 0) {
+      // Get the current product to check for existing images
+      const currentProduct = await ProductModel.findById(productId);
+      if (currentProduct && currentProduct.image && currentProduct.image.length > 0) {
+        // Delete old image files
+        currentProduct.image.forEach(imagePath => {
+          deleteOldImage(imagePath);
+        });
+      }
+      updateData.image = req.files.map(file => getRelativePath(file.path));
+    }
     
     // Get the product first to check ownership through business
     const product = await ProductModel.findById(productId).populate('bussinessId', 'owner');
@@ -531,5 +718,50 @@ exports.getAllProductsForAdmin = async (req, res) => {
     }));
   } catch (error) {
     res.status(500).json(errorResponse(500, "Failed to fetch all products", error.message));
+  }
+};
+
+// Upload product images
+exports.uploadProductImages = async (req, res) => {
+  try {
+    const productId = req.params.id;
+    const userId = req.userId;
+    const userRole = req.userRole;
+
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json(errorResponse(400, "No image files provided"));
+    }
+
+    // Get the product
+    const product = await ProductModel.findById(productId).populate('bussinessId', 'owner');
+    if (!product) {
+      return res.status(404).json(errorResponse(404, "Product not found"));
+    }
+
+    // Check permissions - owner through business or admin
+    const isOwner = product.bussinessId && product.bussinessId.owner.toString() === userId;
+    const isAdmin = userRole === 'admin';
+    
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json(errorResponse(403, 'Access denied. You can only update products from your business or need admin privileges.'));
+    }
+
+    // Delete old images if exist
+    if (product.image && product.image.length > 0) {
+      product.image.forEach(imagePath => {
+        deleteOldImage(imagePath);
+      });
+    }
+
+    // Update product with new images
+    product.image = req.files.map(file => getRelativePath(file.path));
+    await product.save();
+
+    res.status(200).json(successResponse(200, "Product images uploaded successfully", {
+      productId: product._id,
+      images: product.image
+    }));
+  } catch (error) {
+    res.status(500).json(errorResponse(500, "Failed to upload product images", error.message));
   }
 };
