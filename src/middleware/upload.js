@@ -8,6 +8,7 @@ const ensureUploadDirs = () => {
     'uploads/images/businesses',
     'uploads/images/products', 
     'uploads/images/advertisements',
+    'uploads/images/users',
     'uploads/temp'
   ];
   
@@ -35,6 +36,9 @@ const getStorage = (entityType) => {
           break;
         case 'advertisement':
           uploadPath = 'uploads/images/advertisements';
+          break;
+        case 'user':
+          uploadPath = 'uploads/images/users';
           break;
         default:
           uploadPath = 'uploads/temp';
@@ -86,6 +90,7 @@ const createUploadMiddleware = (entityType, fieldName = 'image', maxCount = 1) =
 const uploadBusinessImage = createUploadMiddleware('business', 'image', 1);
 const uploadProductImages = createUploadMiddleware('product', 'images', 5); // Allow multiple images for products
 const uploadAdvertisementImage = createUploadMiddleware('advertisement', 'image', 1);
+const uploadUserImage = createUploadMiddleware('user', 'profileImage', 1); // Single profile image for users
 
 // Middleware to ensure form data is properly parsed
 const ensureFormDataParsed = (req, res, next) => {
@@ -159,6 +164,7 @@ module.exports = {
   uploadBusinessImage,
   uploadProductImages,
   uploadAdvertisementImage,
+  uploadUserImage,
   handleUploadError,
   deleteOldImage,
   getRelativePath,

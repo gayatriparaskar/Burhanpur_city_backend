@@ -2,6 +2,7 @@
 const express = require ("express");
 const authentication = require ("../middleware/authentication");
 const checkRole = require("../middleware/authorization");
+const { uploadUserImage, handleUploadError, ensureFormDataParsed } = require("../middleware/upload");
 const { 
   createUser, 
   getAllUser, 
@@ -14,14 +15,15 @@ const {
   changePassword,
   forgotPassword,
   resetPassword,
-  verifyResetToken
+  verifyResetToken,
+  uploadUserProfileImage
 } = require ("../controllers/UserController");
 
 const userRouter = express.Router();
 
-userRouter.post("/createUser",createUser);
+userRouter.post("/createUser", ensureFormDataParsed, uploadUserImage, handleUploadError, createUser);
 userRouter.get("/userDetails",getAllUser);
-userRouter.put("/updatedUser/:id",updateUer);
+userRouter.put("/updatedUser/:id", ensureFormDataParsed, uploadUserImage, handleUploadError, updateUer);
 userRouter.delete("/deleteUser/:id",deleteUser);
 userRouter.post("/login",login);
 userRouter.get("/me",authentication,getOneUser);
@@ -35,6 +37,9 @@ userRouter.put("/change-password", authentication, changePassword);
 userRouter.post("/forgot-password", forgotPassword);
 userRouter.post("/reset-password", resetPassword);
 userRouter.post("/verify-reset-token", verifyResetToken);
+
+// Profile image upload route
+userRouter.post("/upload-profile-image/:id", authentication, uploadUserImage, handleUploadError, uploadUserProfileImage);
 
 module.exports = userRouter ;
 

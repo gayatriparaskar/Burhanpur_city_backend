@@ -14,10 +14,16 @@ const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRE = process.env.JWT_EXPIRE;
 
 const UserModel = require("../models/User");
+const { uploadUserImage, handleUploadError, deleteOldImage, getRelativePath } = require("../middleware/upload");
 
 module.exports.createUser = async (req, res) => {
   try {
     const data = req.body;
+
+    // Handle profile image upload
+    if (req.file) {
+      data.profileImage = getRelativePath(req.file.path);
+    }
 
     // Validate phone number
     if (!/^\d{10}$/.test(data.phone)) {
@@ -67,6 +73,17 @@ module.exports.updateUer = async (req,res)=>{
     try {
         const query = req.body;
         const id = req.params.id;
+
+        // Handle profile image upload
+        if (req.file) {
+            // Get the current user to check for existing profile image
+            const currentUser = await UserModel.findById(id);
+            if (currentUser && currentUser.profileImage) {
+                // Delete old profile image file
+                deleteOldImage(currentUser.profileImage);
+            }
+            query.profileImage = getRelativePath(req.file.path);
+        }
         
         // Check if status is being updated and validate it
         if (query.status && !['active', 'inactive', 'blocked'].includes(query.status)) {
@@ -406,5 +423,38 @@ module.exports.verifyResetToken = async (req, res) => {
   } catch (error) {
     console.error("Verify reset token error:", error);
     res.status(500).json(errorResponse(500, "Failed to verify reset token", error.message));
+  }
+};
+
+// Upload user profile image
+module.exports.uploadUserProfileImage = async (req, res) => {
+  try {
+    const userId = req.params.id;
+
+    if (!req.file) {
+      return res.status(400).json(errorResponse(400, "No image file provided"));
+    }
+
+    // Get the user
+    const user = await UserModel.findById(userId);
+    if (!user) {
+      return res.status(404).json(errorResponse(404, "User not found"));
+    }
+
+    // Delete old profile image if exists
+    if (user.profileImage) {
+      deleteOldImage(user.profileImage);
+    }
+
+    // Update user with new profile image
+    user.profileImage = getRelativePath(req.file.path);
+    await user.save();
+
+    res.status(200).json(successResponse(200, "Profile image uploaded successfully", {
+      userId: user._id,
+      profileImage: user.profileImage
+    }));
+  } catch (error) {
+    res.status(500).json(errorResponse(500, "Failed to upload profile image", error.message));
   }
 };

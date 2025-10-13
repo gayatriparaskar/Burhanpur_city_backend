@@ -23,10 +23,11 @@ const userSchema = new mongoose.Schema({
     }
   },
   address: { type: String },
+  profileImage: { type: String }, // Profile image path
   createdAt: { type: Date, default: Date.now },
   isActive: { type: Boolean, default: true },
   planId: { type: mongoose.Types.ObjectId, ref: "Plan" },
-planName: { type: String },
+  planName: { type: String },
   paymentDone: { type: Boolean, default: false },
   paymentDoneOn: { type: Date },
   lastPaymentAmount: { type: Number },
