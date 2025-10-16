@@ -3,18 +3,23 @@ const SubcategoryModel = require("../models/SubCategory");
 const BusinessModel = require("../models/Business");
 const ProductModel = require("../models/Product");
 const { errorResponse, successResponse } = require("../helper/successAndError");
+const { uploadCategoryImage, handleUploadError, deleteOldImage, getRelativePath } = require("../middleware/upload");
 
 module.exports.createCategory = async (req, res) => {
     try {
         const data = req.body;
-        // data.user = req.user.id;
+        
+        // Handle image upload
+        if (req.file) {
+            data.image = getRelativePath(req.file.path);
+        }
 
         const existOne = await CategoryModel.findOne({ name: data.name });
         if (existOne) {
             return res.status(404).json(errorResponse(404, "Category already exists Cannot generae this", existOne));
         }
 
-        const newCategory = new CategoryModel(data); // <-- pass data here!
+        const newCategory = new CategoryModel(data);
         await newCategory.save();
 
         res.status(200).json(successResponse(200, "Category created successfully", newCategory));
@@ -46,6 +51,18 @@ module.exports.updateCategory = async(req,res)=>{
     try {
         const data = req.body;
         const id = req.params.id;
+        
+        // Handle image upload
+        if (req.file) {
+            // Get the current category to check for existing image
+            const currentCategory = await CategoryModel.findById(id);
+            if (currentCategory && currentCategory.image) {
+                // Delete old image file
+                deleteOldImage(currentCategory.image);
+            }
+            data.image = getRelativePath(req.file.path);
+        }
+        
         const updateCategory = await CategoryModel.findByIdAndUpdate(id,data,{
             new:true,
             runValidators:true
@@ -63,6 +80,39 @@ module.exports.deleteCategory = async(req,res)=>{
         res.status(200).json(successResponse(200,"Category is deleted",deletedCategory));
     } catch (error) {
         res.status(500).json(errorResponse(500,"Category is not Deleted",error));
+    }
+};
+
+// Upload category image
+module.exports.uploadCategoryImage = async (req, res) => {
+    try {
+        const categoryId = req.params.id;
+
+        if (!req.file) {
+            return res.status(400).json(errorResponse(400, "No image file provided"));
+        }
+
+        // Get the category
+        const category = await CategoryModel.findById(categoryId);
+        if (!category) {
+            return res.status(404).json(errorResponse(404, "Category not found"));
+        }
+
+        // Delete old image if exists
+        if (category.image) {
+            deleteOldImage(category.image);
+        }
+
+        // Update category with new image
+        category.image = getRelativePath(req.file.path);
+        await category.save();
+
+        res.status(200).json(successResponse(200, "Category image uploaded successfully", {
+            categoryId: category._id,
+            imagePath: category.image
+        }));
+    } catch (error) {
+        res.status(500).json(errorResponse(500, "Failed to upload category image", error.message));
     }
 };
 

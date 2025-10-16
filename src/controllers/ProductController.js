@@ -10,6 +10,15 @@ exports.createProduct = async (req, res) => {
   try {
     const data = req.body;
     
+    // Debug: Log the incoming data
+    console.log('Request body:', req.body);
+    console.log('Request files:', req.files);
+    
+    // Check if data is undefined or empty
+    if (!data || Object.keys(data).length === 0) {
+      return res.status(400).json(errorResponse(400, "Request body is empty or invalid"));
+    }
+    
     // Handle image uploads
     if (req.files && req.files.length > 0) {
       data.image = req.files.map(file => getRelativePath(file.path));

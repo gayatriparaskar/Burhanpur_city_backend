@@ -28,7 +28,7 @@ productrouter.get("/productDetails", getAllProducts);
 productrouter.get("/ProductDetails/:id", getProductById);
 
 // Update product by ID (unified for owner and admin)
-productrouter.put("/updateProduct/:id", authentication, uploadProductImages, handleUploadError, updateProduct);
+productrouter.put("/updateProduct/:id", authentication, updateProduct);
 
 // Delete product by ID
 productrouter.delete("/deleteProduct/:id", deleteProduct);

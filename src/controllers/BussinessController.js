@@ -5,9 +5,72 @@ const UserModel = require("../models/User"); // adjust path accordingly
 const NotificationModel = require("../models/Notification");
 const { sendPushNotification, sendBulkPushNotifications } = require("../utils/sendPushNotification");
 const { uploadBusinessImage, handleUploadError, deleteOldImage, getRelativePath } = require("../middleware/upload");
+// const OTPModel = require("../models/OTP"); // Commented out OTP logic
 
 const SubCategoryModel = require("../models/SubCategory"); // Adjust path as needed
 
+// Create business with OTP verification
+// module.exports.createBusinessWithOTP = async (req, res) => {
+//   try {
+//     const data = req.body;
+//     const { phone, otp } = data;
+
+//     // Validate required fields
+//     if (!phone || !otp) {
+//       return res.status(400).json(errorResponse(400, "Phone number and OTP are required"));
+//     }
+
+//     // Validate phone number format
+//     if (!/^\d{10}$/.test(phone)) {
+//       return res.status(400).json(errorResponse(400, "Valid 10-digit phone number is required"));
+//     }
+
+//     // Validate OTP format
+//     if (!/^\d{6}$/.test(otp)) {
+//       return res.status(400).json(errorResponse(400, "Valid 6-digit OTP is required"));
+//     }
+
+//     // Verify OTP
+//     const otpRecord = await OTPModel.findOne({
+//       phone,
+//       purpose: 'business_registration',
+//       isVerified: false,
+//       expiresAt: { $gt: new Date() }
+//     });
+
+//     if (!otpRecord) {
+//       return res.status(404).json(errorResponse(404, "OTP not found or expired. Please request a new OTP."));
+//     }
+
+//     // Check if max attempts reached
+//     if (otpRecord.hasMaxAttempts()) {
+//       return res.status(429).json(errorResponse(429, "Maximum OTP attempts reached. Please request a new OTP."));
+//     }
+
+//     // Verify OTP
+//     const bcrypt = require('bcrypt');
+//     const isOtpValid = await bcrypt.compare(otp, otpRecord.hashedOtp);
+
+//     if (!isOtpValid) {
+//       // Increment attempts
+//       await otpRecord.incrementAttempts();
+      
+//       const remainingAttempts = 3 - otpRecord.attempts;
+//       return res.status(400).json(errorResponse(400, `Invalid OTP. ${remainingAttempts} attempts remaining`));
+//     }
+
+//     // Mark OTP as verified
+//     await otpRecord.markAsVerified();
+
+//     // Continue with business creation (same logic as createBussiness)
+//     return await createBusinessLogic(req, res, data);
+//   } catch (error) {
+//     console.error('Create business with OTP error:', error);
+//     return res.status(500).json(errorResponse(500, "Failed to create business with OTP verification", error.message));
+//   }
+// };
+
+// Original createBussiness function (now calls the logic function)
 module.exports.createBussiness = async (req, res) => {
   try {
     const data = req.body;
@@ -16,6 +79,20 @@ module.exports.createBussiness = async (req, res) => {
     console.log('Request body:', data);
     console.log('Request files:', req.file);
 
+    // Handle image upload
+    if (req.file) {
+      data.images = getRelativePath(req.file.path);
+    }
+
+    return await createBusinessLogic(req, res, data);
+  } catch (error) {
+    return res.status(500).json(errorResponse(500, "Something went wrong", error.message));
+  }
+};
+
+// Common business creation logic
+const createBusinessLogic = async (req, res, data) => {
+  try {
     // Handle image upload
     if (req.file) {
       data.images = getRelativePath(req.file.path);

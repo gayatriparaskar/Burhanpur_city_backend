@@ -23,6 +23,8 @@ const saveSubscriptionRoute = require('./src/routes/saveSubscription'); // Push 
 const conversationRoutes = require('./src/routes/ConversationRouter'); // Conversation routes
 const messageRoutes = require('./src/routes/MessageRouter'); // Message routes
 const notificationRoutes = require('./src/routes/NotificationRouter'); // Notification routes
+const enquiryRoutes = require('./src/routes/EnquiryRouter'); // Enquiry routes
+// const otpRoutes = require('./src/routes/OTPRouter'); // OTP routes - commented out
 
 
 
@@ -59,6 +61,8 @@ app.use('/api/save-subscription', saveSubscriptionRoute); // Push notification s
 app.use('/api/conversations', conversationRoutes); // Conversation routes
 app.use('/api/messages', messageRoutes); // Message routes
 app.use('/api/notifications', notificationRoutes); // Notification routes
+app.use('/api/enquiries', enquiryRoutes); // Enquiry routes
+// app.use('/api/otp', otpRoutes); // OTP routes - commented out
 
 
 // Error handling middleware

@@ -5,7 +5,10 @@ const {
   markAsRead,
   markAllAsRead,
   getUnreadCount,
-  deleteNotification
+  deleteNotification,
+  getAllUserNotifications,
+  getNotificationSummary,
+  getNotificationsByEntity
 } = require("../controllers/NotificationController");
 
 const NotificationRouter = express.Router();
@@ -24,5 +27,14 @@ NotificationRouter.get("/unread-count", authentication, getUnreadCount);
 
 // Delete notification
 NotificationRouter.delete("/:id", authentication, deleteNotification);
+
+// Get all user notifications (unified API for business, product, booking)
+NotificationRouter.get("/all", authentication, getAllUserNotifications);
+
+// Get notification summary/dashboard
+NotificationRouter.get("/summary", authentication, getNotificationSummary);
+
+// Get notifications by entity type (business, product, booking)
+NotificationRouter.get("/entity/:entityType/:entityId", authentication, getNotificationsByEntity);
 
 module.exports = NotificationRouter;

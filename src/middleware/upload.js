@@ -88,7 +88,45 @@ const createUploadMiddleware = (entityType, fieldName = 'image', maxCount = 1) =
 
 // Specific upload middlewares for each entity
 const uploadBusinessImage = createUploadMiddleware('business', 'image', 1);
-const uploadProductImages = createUploadMiddleware('product', 'images', 5); // Allow multiple images for products
+const uploadProductImages = createUploadMiddleware('product', 'image', 5); // Allow multiple images for products
+
+// Flexible product upload middleware that accepts both 'image' and 'images'
+const uploadProductImagesFlexible = (req, res, next) => {
+  const storage = getStorage('product');
+  
+  const upload = multer({
+    storage: storage,
+    fileFilter: imageFilter,
+    limits: {
+      fileSize: 5 * 1024 * 1024, // 5MB limit
+      files: 5
+    }
+  });
+  
+  // Use fields to accept both 'image' and 'images'
+  upload.fields([
+    { name: 'image', maxCount: 1 },
+    { name: 'images', maxCount: 5 }
+  ])(req, res, (err) => {
+    if (err) {
+      return next(err);
+    }
+    
+    // Normalize the files - put all files in req.files.images
+    if (req.files) {
+      const allFiles = [];
+      if (req.files.image) {
+        allFiles.push(...req.files.image);
+      }
+      if (req.files.images) {
+        allFiles.push(...req.files.images);
+      }
+      req.files = allFiles;
+    }
+    
+    next();
+  });
+};
 const uploadAdvertisementImage = createUploadMiddleware('advertisement', 'image', 1);
 const uploadUserImage = createUploadMiddleware('user', 'profileImage', 1); // Single profile image for users
 
@@ -163,6 +201,7 @@ const getRelativePath = (fullPath) => {
 module.exports = {
   uploadBusinessImage,
   uploadProductImages,
+  uploadProductImagesFlexible,
   uploadAdvertisementImage,
   uploadUserImage,
   handleUploadError,

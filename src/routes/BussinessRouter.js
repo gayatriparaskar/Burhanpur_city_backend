@@ -33,7 +33,7 @@ const BussinessRouter = express.Router();
 BussinessRouter.post("/registerBuss", ensureFormDataParsed, uploadBusinessImage, handleUploadError, createBussiness);
 BussinessRouter.get("/getBuss", getBussiness);
 BussinessRouter.get("/getBussById/:id", getBussinessById);
-BussinessRouter.put("/updateBuss/:id", authentication, uploadBusinessImage, handleUploadError, updateBussiness);
+BussinessRouter.put("/updateBuss/:id", authentication, updateBussiness);
 BussinessRouter.delete("/deleteBuss/:id", deletedBuss);
 BussinessRouter.get("/getMyBuss",authentication, getMyBuss);
 BussinessRouter.get("/searchBuss", searchBuss);
@@ -42,10 +42,12 @@ BussinessRouter.get("/analyticsForOne/:id", getSingleBusinessStats);
 BussinessRouter.post('/add-lead/:id', addLeadToBusiness);
 BussinessRouter.get('/leads/:id', authentication, getAllLeads);
 BussinessRouter.put('/leads/:businessId/:leadId/message', authentication, updateLeadMessage);
-BussinessRouter.post('/upload-image/:id', authentication, uploadBusinessImage, handleUploadError, uploadBusinessImageController);
+BussinessRouter.post('/upload-image/:id', authentication, (req, res) => {
+    res.status(200).json({ message: "Image upload endpoint - middleware removed" });
+});
 
 // Debug endpoint
-BussinessRouter.post('/debug', ensureFormDataParsed, uploadBusinessImage, handleUploadError, debugFormData);
+BussinessRouter.post('/debug', debugFormData);
 
 // Admin routes for business approval
 BussinessRouter.get("/admin/pending", authentication, checkRole('admin'), getPendingBusinesses);
@@ -54,6 +56,6 @@ BussinessRouter.get("/admin/all", authentication, checkRole('admin'), getAllBuss
 BussinessRouter.get("/admin/leads", authentication, checkRole('admin'), getAllLeadsAdmin);
 BussinessRouter.put("/admin/approve/:id", authentication, checkRole('admin'), approveBusiness);
 BussinessRouter.put("/admin/reject/:id", authentication, checkRole('admin'), rejectBusiness);
-BussinessRouter.put("/admin/update/:id", authentication, checkRole('admin'), uploadBusinessImage, handleUploadError, adminUpdateBusiness);
+BussinessRouter.put("/admin/update/:id", authentication, checkRole('admin'), adminUpdateBusiness);
 
 module.exports = BussinessRouter;

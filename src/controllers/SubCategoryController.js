@@ -2,6 +2,7 @@ const express = require("express");
 const SubCategoryModel = require("../models/SubCategory");
 const { errorResponse, successResponse } = require("../helper/successAndError");
 const BussinessModel = require("../models/Business");
+const { uploadSubCategoryImage, handleUploadError, deleteOldImage, getRelativePath } = require("../middleware/upload");
 
 module.exports.createSubCat = async (req, res) => {
   try {
@@ -21,6 +22,11 @@ module.exports.createSubCat = async (req, res) => {
       services,
       emergency
     } = req.body;
+    
+    // Handle image upload
+    if (req.file) {
+      image = getRelativePath(req.file.path);
+    }
 
     // Validate required fields
     if (!name || !category) {
@@ -163,6 +169,17 @@ module.exports.updateSubCategory = async (req, res) => {
     const data = req.body;
     const id = req.params.id;
 
+    // Handle image upload
+    if (req.file) {
+      // Get the current subcategory to check for existing image
+      const currentSubCategory = await SubCategoryModel.findById(id);
+      if (currentSubCategory && currentSubCategory.image) {
+        // Delete old image file
+        deleteOldImage(currentSubCategory.image);
+      }
+      data.image = getRelativePath(req.file.path);
+    }
+
     if (data.name) {
       data.name = data.name.trim();
     }
@@ -206,5 +223,38 @@ module.exports.deleteSubCategory = async (req, res) => {
       "Failed to delete subcategory",
       error
     ));
+  }
+};
+
+// Upload subcategory image
+module.exports.uploadSubCategoryImage = async (req, res) => {
+  try {
+    const subCategoryId = req.params.id;
+
+    if (!req.file) {
+      return res.status(400).json(errorResponse(400, "No image file provided"));
+    }
+
+    // Get the subcategory
+    const subCategory = await SubCategoryModel.findById(subCategoryId);
+    if (!subCategory) {
+      return res.status(404).json(errorResponse(404, "Subcategory not found"));
+    }
+
+    // Delete old image if exists
+    if (subCategory.image) {
+      deleteOldImage(subCategory.image);
+    }
+
+    // Update subcategory with new image
+    subCategory.image = getRelativePath(req.file.path);
+    await subCategory.save();
+
+    res.status(200).json(successResponse(200, "Subcategory image uploaded successfully", {
+      subCategoryId: subCategory._id,
+      imagePath: subCategory.image
+    }));
+  } catch (error) {
+    res.status(500).json(errorResponse(500, "Failed to upload subcategory image", error.message));
   }
 };
