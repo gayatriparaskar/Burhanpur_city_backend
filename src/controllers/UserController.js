@@ -16,6 +16,14 @@ const JWT_EXPIRE = process.env.JWT_EXPIRE;
 const UserModel = require("../models/User");
 const { uploadUserImage, handleUploadError, deleteOldImage, getRelativePath } = require("../middleware/upload");
 
+// Helper function to generate full image URL
+const getImageUrl = (imagePath) => {
+  if (!imagePath) return null;
+  // Use BACKEND_URL for API server, not frontend URL
+  const baseUrl = process.env.BACKEND_URL || process.env.BASE_URL || `http://localhost:${process.env.PORT || 5000}`;
+  return `${baseUrl}/${imagePath}`;
+};
+
 module.exports.createUser = async (req, res) => {
   try {
     const data = req.body;
@@ -450,11 +458,46 @@ module.exports.uploadUserProfileImage = async (req, res) => {
     user.profileImage = getRelativePath(req.file.path);
     await user.save();
 
+    // Return updated user data so frontend can update the UI immediately
     res.status(200).json(successResponse(200, "Profile image uploaded successfully", {
-      userId: user._id,
-      profileImage: user.profileImage
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        profileImage: user.profileImage,
+        role: user.role
+      },
+      profileImage: user.profileImage,
+      imageUrl: getImageUrl(user.profileImage)
     }));
   } catch (error) {
     res.status(500).json(errorResponse(500, "Failed to upload profile image", error.message));
+  }
+};
+
+// Get current user data (for updating UI after profile changes)
+module.exports.getCurrentUser = async (req, res) => {
+  try {
+    const userId = req.userId;
+    
+    const user = await UserModel.findById(userId).select('-password');
+    if (!user) {
+      return res.status(404).json(errorResponse(404, "User not found"));
+    }
+
+    res.status(200).json(successResponse(200, "User data fetched successfully", {
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        profileImage: user.profileImage,
+        role: user.role
+      },
+      imageUrl: getImageUrl(user.profileImage)
+    }));
+  } catch (error) {
+    res.status(500).json(errorResponse(500, "Failed to get user data", error.message));
   }
 };

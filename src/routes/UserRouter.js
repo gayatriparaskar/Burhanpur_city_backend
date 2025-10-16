@@ -16,7 +16,8 @@ const {
   forgotPassword,
   resetPassword,
   verifyResetToken,
-  uploadUserProfileImage
+  uploadUserProfileImage,
+  getCurrentUser
 } = require ("../controllers/UserController");
 
 const userRouter = express.Router();
@@ -40,6 +41,9 @@ userRouter.post("/verify-reset-token", verifyResetToken);
 
 // Profile image upload route
 userRouter.post("/upload-profile-image/:id", authentication, uploadUserImage, handleUploadError, uploadUserProfileImage);
+
+// Get current user data (for updating UI after profile changes)
+userRouter.get("/current-user", authentication, getCurrentUser);
 
 module.exports = userRouter ;
 
