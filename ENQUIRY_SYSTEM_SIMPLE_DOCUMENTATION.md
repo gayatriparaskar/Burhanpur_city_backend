@@ -7,7 +7,9 @@ A simplified enquiry system where users can submit enquiries for specific catego
 ```javascript
 {
   user: ObjectId,           // User who submitted the enquiry
-  description: String,      // Enquiry description
+  userName: String,         // Name of the person making the enquiry
+  userPhone: String,        // Phone number of the person making the enquiry
+  message: String,         // Enquiry message
   category: ObjectId,       // Category ID for detecting businesses
   subCategory: ObjectId,    // SubCategory ID for detecting businesses
   createdAt: Date,          // Auto-generated timestamp
@@ -23,9 +25,11 @@ A simplified enquiry system where users can submit enquiries for specific catego
 **Request Body:**
 ```json
 {
-  "description": "Need catering services for wedding with 200 guests",
+  "message": "Need catering services for wedding with 200 guests",
   "category": "64f1a2b3c4d5e6f7g8h9i0j1",
-  "subCategory": "64f1a2b3c4d5e6f7g8h9i0j2"
+  "subCategory": "64f1a2b3c4d5e6f7g8h9i0j2",
+  "userName": "John Doe",
+  "userPhone": "+1234567890"
 }
 ```
 
@@ -38,7 +42,9 @@ A simplified enquiry system where users can submit enquiries for specific catego
     "enquiry": {
       "_id": "enquiry_id",
       "user": "user_id",
-      "description": "Need catering services for wedding with 200 guests",
+      "userName": "John Doe",
+      "userPhone": "+1234567890",
+      "message": "Need catering services for wedding with 200 guests",
       "category": "64f1a2b3c4d5e6f7g8h9i0j1",
       "subCategory": "64f1a2b3c4d5e6f7g8h9i0j2",
       "createdAt": "2024-01-15T10:30:00Z"
@@ -67,7 +73,7 @@ A simplified enquiry system where users can submit enquiries for specific catego
     "enquiries": [
       {
         "_id": "enquiry_id",
-        "description": "Need catering services for wedding with 200 guests",
+        "message": "Need catering services for wedding with 200 guests",
         "user": {
           "name": "Alice Johnson",
           "phone": "+91-9876543210"
@@ -113,7 +119,7 @@ A simplified enquiry system where users can submit enquiries for specific catego
   "data": {
     "enquiry": {
       "_id": "enquiry_id",
-      "description": "Need catering services for wedding with 200 guests",
+      "message": "Need catering services for wedding with 200 guests",
       "user": {
         "name": "Alice Johnson",
         "phone": "+91-9876543210"
@@ -144,7 +150,7 @@ A simplified enquiry system where users can submit enquiries for specific catego
     "enquiries": [
       {
         "_id": "enquiry_id",
-        "description": "Need catering services for wedding with 200 guests",
+        "message": "Need catering services for wedding with 200 guests",
         "category": {
           "name": "Food & Dining"
         },
@@ -174,7 +180,7 @@ A simplified enquiry system where users can submit enquiries for specific catego
   "message": "Enquiry details fetched successfully",
   "data": {
     "_id": "enquiry_id",
-    "description": "Need catering services for wedding with 200 guests",
+    "message": "Need catering services for wedding with 200 guests",
     "user": {
       "name": "Alice Johnson",
       "phone": "+91-9876543210"
@@ -205,7 +211,7 @@ When a business responds to an enquiry, the enquiry submitter receives a notific
 
 ## System Flow
 
-1. **User submits enquiry** → Only description, category, subCategory required
+1. **User submits enquiry** → Only message, category, subCategory required
 2. **System finds businesses** → All businesses in that category/subcategory
 3. **Notifications sent** → To all relevant business owners with user name and phone
 4. **Business owners respond** → Via notification system
@@ -213,7 +219,7 @@ When a business responds to an enquiry, the enquiry submitter receives a notific
 
 ## Key Features
 
-✅ **Simple Model** - Only essential fields (user, description, category, subCategory)  
+✅ **Simple Model** - Only essential fields (user, message, category, subCategory)  
 ✅ **User Details** - Shows user name and phone in responses  
 ✅ **Automatic Targeting** - Finds relevant businesses automatically  
 ✅ **Notification System** - Integrated with existing notification system  
@@ -232,9 +238,11 @@ const submitEnquiry = async (formData) => {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        description: formData.description,
+        message: formData.message,
         category: formData.category,
-        subCategory: formData.subCategory
+        subCategory: formData.subCategory,
+        userName: formData.userName,
+        userPhone: formData.userPhone
       })
     });
     const result = await response.json();

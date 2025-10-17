@@ -8,8 +8,22 @@ const enquirySchema = new mongoose.Schema({
     required: true
   },
   
-  // Enquiry description
-  description: {
+  // User name for enquiry (can be different from registered user)
+  userName: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  
+  // User phone for enquiry (can be different from registered user)
+  userPhone: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  
+  // Enquiry message
+  message: {
     type: String,
     required: true,
     trim: true

@@ -10,11 +10,11 @@ const { successResponse, errorResponse } = require("../helper/successAndError");
 module.exports.submitEnquiry = async (req, res) => {
   try {
     const userId = req.userId;
-    const { description, category, subCategory } = req.body;
+    const { message, category, subCategory, userName, userPhone } = req.body;
 
     // Validation
-    if (!description || !category || !subCategory) {
-      return res.status(400).json(errorResponse(400, "Description, category, and subCategory are required"));
+    if (!message || !category || !subCategory || !userName || !userPhone) {
+      return res.status(400).json(errorResponse(400, "Message, category, subCategory, userName, and userPhone are required"));
     }
 
     // Verify category and subcategory exist
@@ -28,7 +28,9 @@ module.exports.submitEnquiry = async (req, res) => {
     // Create enquiry
     const enquiry = new EnquiryModel({
       user: userId,
-      description,
+      userName,
+      userPhone,
+      message,
       category,
       subCategory
     });
@@ -45,14 +47,11 @@ module.exports.submitEnquiry = async (req, res) => {
       approvalStatus: 'approved'
     }).populate('owner', 'name email phone');
 
-    // Get user details for notification
-    const userDetails = await UserModel.findById(userId).select('name phone');
-
     // Send notifications to all target businesses
     const notificationPromises = targetBusinesses.map(async (business) => {
       const notification = new NotificationModel({
         title: `New Enquiry Received`,
-        message: `A new enquiry has been submitted for ${subCategoryExists.name} by ${userDetails.name} (${userDetails.phone}). ${description.substring(0, 100)}...`,
+        message: `A new enquiry has been submitted for ${subCategoryExists.name} by ${userName} (${userPhone}). ${message.substring(0, 100)}...`,
         type: 'enquiry_received',
         recipient: business.owner._id,
         sender: userId,
@@ -61,8 +60,8 @@ module.exports.submitEnquiry = async (req, res) => {
           enquiryId: enquiry._id,
           category: categoryExists.name,
           subCategory: subCategoryExists.name,
-          userName: userDetails.name,
-          userPhone: userDetails.phone
+          userName: userName,
+          userPhone: userPhone
         }
       });
 
